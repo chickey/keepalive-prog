@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "file": "keepalive.bin",
   "size": 13688,
-  "sha256": "548242f955595550375f289cf3e36aebf0c613b939c1de700124f25734f782c4",
-  "built": "2026-10-07",
+  "sha256": "23a7bb7649cce7ad0490d0a20cc84900c43d2c06103b653d1e00561c1645307f",
+  "built": "2026-10-15",
   "chip": "CH32X035F8U6",
   "note": "Pre-release build: this firmware has not yet been tested on real hardware."
 }
