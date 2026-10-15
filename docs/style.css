@@ -232,3 +232,30 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Flash page */
+a { color: var(--accent); }
+a.btn { text-decoration: none; display: inline-block; }
+code { font-family: var(--mono); font-size: 0.88em; padding: 1px 5px; border-radius: 4px; background: var(--surface-2); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.fwcard, .flashcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; display: grid; gap: 12px; }
+.fwinfo { margin: 4px 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fwinfo b { color: var(--fg); }
+.flash-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kv { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kv div { padding: 10px 12px; background: var(--surface-2); border-radius: 8px; min-width: 0; }
+.kv dt { color: var(--muted); font-size: 0.78rem; }
+.kv dd { margin: 2px 0 0; font-family: var(--mono); font-size: 0.9rem; overflow-wrap: anywhere; }
+.progress { display: grid; gap: 6px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .15s linear; }
+.notice.ok { background: var(--surface); border-color: var(--ok); color: var(--fg); box-shadow: inset 4px 0 0 var(--ok); }
+.notice.error a { color: inherit; }
+.notice strong { display: block; margin-bottom: 2px; }
+.help .adv-item p, .plain { color: var(--muted); font-size: 0.88rem; max-width: 70ch; }
+.plain { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.log.code { color: var(--fg); white-space: pre; overflow-x: auto; overflow-wrap: normal; }
+@media (max-width: 640px) {
+  .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -79,6 +79,10 @@ board into the Mac, then
 wchisp flash prebuilt/keepalive.bin      # or: make isp
 ```
 
+Or, with the board in the bootloader the same way, use the browser flasher at
+`docs/flash.html` (Chrome/Edge). It installs `docs/firmware/keepalive.bin`;
+`make site` copies `prebuilt/keepalive.bin` there and updates its manifest.
+
 Once the firmware is running, `BOOT` from the config page (Advanced → Enter
 update mode) does the same without the button.
 

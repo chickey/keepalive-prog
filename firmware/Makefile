@@ -4,6 +4,8 @@
 #   make test       run the host-side protocol and scheduler tests
 #   make isp        flash over USB with wchisp (board in bootloader)
 #   make flash      flash with a WCH-LinkE via minichlink
+#   make site       publish prebuilt/keepalive.bin to the web flasher (../docs/firmware);
+#                   NOTE="..." adds a line shown under the version
 #
 # ch32fun is expected in ./ch32fun (git submodule) or set CH32FUN_ROOT.
 
@@ -23,7 +25,7 @@ ifneq ($(wildcard /usr/lib/picolibc/riscv64-unknown-elf/include),)
 NEWLIB ?= /usr/lib/picolibc/riscv64-unknown-elf/include
 endif
 
-ifneq ($(MAKECMDGOALS),test)
+ifeq ($(filter test site,$(MAKECMDGOALS)),)
 include $(CH32FUN_ROOT)/ch32fun/ch32fun.mk
 endif
 
@@ -46,3 +48,18 @@ test :
 	./test/test_host
 
 .PHONY : test isp size_check
+
+# Copy the prebuilt binary to the web flasher and regenerate its manifest.
+SITE_FW := ../docs/firmware
+NOTE ?=
+site :
+	cp prebuilt/keepalive.bin $(SITE_FW)/keepalive.bin
+	@ver=$$(sed -n 's/^#define FW_VERSION *"\(.*\)".*/\1/p' src/board.h); \
+	size=$$(wc -c < prebuilt/keepalive.bin | tr -d ' '); \
+	sha=$$(shasum -a 256 prebuilt/keepalive.bin 2>/dev/null || sha256sum prebuilt/keepalive.bin); sha=$${sha%% *}; \
+	built=$$(date -r prebuilt/keepalive.bin +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d); \
+	printf '{\n  "name": "Keep Alive",\n  "version": "%s",\n  "file": "keepalive.bin",\n  "size": %s,\n  "sha256": "%s",\n  "built": "%s",\n  "chip": "CH32X035F8U6",\n  "note": "%s"\n}\n' \
+		"$$ver" "$$size" "$$sha" "$$built" "$(NOTE)" > $(SITE_FW)/manifest.json; \
+	echo "docs/firmware: keepalive.bin $$ver ($$size bytes)"
+
+.PHONY : site

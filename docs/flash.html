@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flash Keep Alive</title>
+<meta name="description" content="Install new firmware on your Eplop Keep Alive from the browser.">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="stylesheet" href="style.css">
+<script>try { const t = localStorage.getItem('ka-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+<script type="module" src="flash.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img class="mark" src="logo.png" alt="Eplop" width="44" height="44">
+    <div>
+      <h1>Keep Alive firmware</h1>
+      <p class="sub">Install new firmware from the browser</p>
+    </div>
+  </div>
+  <div class="conn">
+    <span id="connState" class="pill" data-state="off">Not connected</span>
+    <a class="btn" href="./">Config page</a>
+  </div>
+  <button id="btnTheme" class="btn theme-btn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+</header>
+
+<main class="wrap">
+  <section id="unsupported" class="notice warn" hidden>
+    <strong>This browser can't flash the Keep Alive.</strong>
+    Flashing needs WebUSB, which works in Chrome, Edge or Opera on a desktop computer.
+    You can still see how it works with <em>Try demo</em>.
+  </section>
+
+  <section class="fwcard" aria-labelledby="fwTitle">
+    <div>
+      <h2 id="fwTitle">Firmware</h2>
+      <p id="fwInfo" class="fwinfo">Loading…</p>
+    </div>
+    <p id="fwNote" class="hint" hidden></p>
+  </section>
+
+  <section class="intro" aria-labelledby="howTitle">
+    <h2 id="howTitle">Install it</h2>
+    <ol class="steps">
+      <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
+      <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive into this computer. Keep holding for a second, then let go. It's now waiting for new firmware.</span></li>
+      <li><span>Click <b>Connect</b> and pick the device in the list. It has a generic name such as <i>USB Module</i>; if the list is empty, see <a href="#help">Trouble connecting</a>.</span></li>
+      <li><span>Click <b>Install firmware</b> and leave it plugged in until this page says it's done (usually under half a minute).</span></li>
+    </ol>
+    <div class="actions">
+      <button id="btnConnect" class="btn primary" type="button">Connect</button>
+      <button id="btnDemo" class="btn" type="button">Try demo</button>
+    </div>
+    <p class="hint">Works in Chrome, Edge or Opera on a desktop computer. Your saved presets are normally kept.</p>
+  </section>
+
+  <section id="device" class="flashcard" aria-labelledby="devTitle" hidden>
+    <div class="flash-head">
+      <h2 id="devTitle">Connected</h2>
+      <button id="btnDisconnect" class="btn small" type="button">Disconnect</button>
+    </div>
+    <dl id="chipInfo" class="kv"></dl>
+    <p id="protNote" class="notice warn" hidden>
+      <strong>This chip's flash is locked (read-protected).</strong>
+      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive,
+      hold BOOT, plug it in again and click Connect.
+    </p>
+    <div class="actions">
+      <button id="btnFlash" class="btn primary" type="button">Install firmware</button>
+    </div>
+    <div id="progress" class="progress" hidden>
+      <div class="progress-label"><span id="stage">Preparing…</span><span id="pct">0%</span></div>
+      <div class="bar" role="progressbar" aria-labelledby="stage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="barFill"></div></div>
+    </div>
+  </section>
+
+  <section id="result" class="notice" role="status" hidden></section>
+
+  <details id="help" class="advanced">
+    <summary>Trouble connecting</summary>
+    <div class="adv-body help">
+      <div class="adv-item col">
+        <h3>The device list is empty</h3>
+        <p>The Keep Alive only shows up while it's in update mode. Unplug it, then hold BOOT <em>before</em> plugging it in and keep holding for a second. If it still doesn't appear, try another cable: some USB cables only carry power.</p>
+      </div>
+      <div class="adv-item col">
+        <h3>Windows: “couldn't open the device”</h3>
+        <p>Windows needs the generic WinUSB driver for the update mode. This is a one-time step per computer:</p>
+        <ol class="plain">
+          <li>Put the Keep Alive in update mode (hold BOOT while plugging it in).</li>
+          <li>Download and run <a href="https://zadig.akeo.ie/" target="_blank" rel="noopener">Zadig</a>.</li>
+          <li>Choose <b>Options → List All Devices</b>, then pick the device with USB ID <code>4348 55E0</code> (often called <i>USB Module</i>).</li>
+          <li>Set the driver on the right to <b>WinUSB</b> and click <b>Replace Driver</b> (or <b>Install Driver</b>).</li>
+          <li>Unplug the Keep Alive, return here and start again from step 1.</li>
+        </ol>
+        <p>If you've used WCH's own flashing tools, their driver will have claimed the device; Zadig replaces it. WCH's tools then need their driver back, which you can reinstall from WCH's site.</p>
+      </div>
+      <div class="adv-item col">
+        <h3>Linux: “couldn't open the device”</h3>
+        <p>Your user needs permission to open the device. Add a udev rule, then unplug and replug the Keep Alive:</p>
+        <pre class="log code">echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="4348", ATTRS{idProduct}=="55e0", MODE="0666"' | sudo tee /etc/udev/rules.d/50-wch-isp.rules
+sudo udevadm control --reload-rules</pre>
+      </div>
+      <div class="adv-item col">
+        <h3>macOS</h3>
+        <p>No driver is needed. Close any other program that might be using the device, such as WCH's flashing tools.</p>
+      </div>
+      <div class="adv-item col">
+        <h3>Communication log</h3>
+        <pre id="log" class="log" aria-live="off"></pre>
+      </div>
+    </div>
+  </details>
+</main>
+</body>
+</html>
