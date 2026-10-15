@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eplop Keep Alive</title>
+<meta name="description" content="Configure your Eplop programmable USB Keep Alive from the browser.">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="stylesheet" href="style.css">
+<script>try { const t = localStorage.getItem('ka-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img class="mark" src="logo.png" alt="Eplop" width="44" height="44">
+    <div>
+      <h1>Keep Alive</h1>
+      <p class="sub">Eplop programmable USB keep-alive</p>
+    </div>
+  </div>
+  <div class="conn">
+    <span id="connState" class="pill" data-state="off">Not connected</span>
+    <button id="btnConnect" class="btn primary" type="button">Connect</button>
+    <button id="btnDemo" class="btn" type="button">Try demo</button>
+    <button id="btnDisconnect" class="btn" type="button" hidden>Disconnect</button>
+  </div>
+  <button id="btnTheme" class="btn theme-btn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+</header>
+
+<main class="wrap">
+  <section id="unsupported" class="notice warn" hidden>
+    <strong>This browser can't talk to the Keep Alive.</strong>
+    Configuring the device needs Web Serial, which works in Chrome, Edge or Opera on a desktop computer.
+    You can still look around with <em>Try demo</em>.
+  </section>
+
+  <section id="intro" class="intro">
+    <h2>Connect your Keep Alive</h2>
+    <ol class="steps">
+      <li><span>Plug the Keep Alive into a USB port on this computer, with nothing plugged into its own socket.</span></li>
+      <li><span>Click <b>Connect</b> and choose <b>Eplop Keep Alive</b> from the list.</span></li>
+      <li><span>Adjust the three presets, then click <b>Save to device</b>.</span></li>
+    </ol>
+    <p class="hint">Pulsing pauses while the Keep Alive is connected to a computer. Use <b>Start trial</b> to watch a preset run.</p>
+  </section>
+
+  <section id="device" hidden>
+    <div class="devbar">
+      <div class="devinfo" id="devInfo"></div>
+      <div class="devactions">
+        <span id="dirty" class="dirty" hidden>Unsaved changes</span>
+        <button id="btnDefaults" class="btn" type="button">Restore defaults</button>
+        <button id="btnSave" class="btn primary" type="button" disabled>Save to device</button>
+      </div>
+    </div>
+
+    <div id="fault" class="notice error" hidden></div>
+
+    <section class="live" aria-labelledby="liveTitle">
+      <div class="live-head">
+        <h2 id="liveTitle">Live</h2>
+        <div class="live-controls">
+          <button id="btnRun" class="btn" type="button">Start trial</button>
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><span class="label">Load current</span><span class="value"><span id="rMa">–</span><small>mA</small></span></div>
+        <div class="readout"><span class="label">Target</span><span class="value"><span id="rSet">–</span><small>mA</small></span></div>
+        <div class="readout"><span class="label">Bus voltage</span><span class="value"><span id="rVbus">–</span><small>V</small></span></div>
+        <div class="readout"><span class="label">State</span><span class="value"><span id="rState" class="state">–</span></span></div>
+      </div>
+      <div class="chart-box">
+        <canvas id="chart" height="160" aria-label="Load current over the last 30 seconds"></canvas>
+        <div class="chart-legend"><span class="lg lg-ma">Measured</span><span class="lg lg-set">Target</span><span id="lastPulse" class="lg-last"></span><span class="lg-note">last 30 s</span></div>
+      </div>
+      <form id="testForm" class="testrow">
+        <span class="label">Single test pulse</span>
+        <label class="inline"><input id="testMa" type="number" min="1" value="100" inputmode="numeric"> mA</label>
+        <label class="inline">for <input id="testS" type="number" min="0.01" step="0.01" value="1" inputmode="decimal"> s</label>
+        <button class="btn" type="submit">Pulse</button>
+      </form>
+    </section>
+
+    <h2 class="section-title">Presets</h2>
+    <p class="hint">The button on the Keep Alive steps through these. Its light blinks once, twice or three times to show which is active.</p>
+    <div id="presets" class="presets"></div>
+
+    <details class="advanced">
+      <summary>Advanced</summary>
+      <div class="adv-body">
+        <div class="adv-item">
+          <div>
+            <h3>Firmware update</h3>
+            <p>Restarts the Keep Alive into its USB bootloader so new firmware can be loaded. It disconnects from this page.</p>
+          </div>
+          <button id="btnBoot" class="btn" type="button">Enter update mode</button>
+        </div>
+        <div class="adv-item col">
+          <h3>Communication log</h3>
+          <pre id="log" class="log" aria-live="off"></pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="bootDone" class="notice" hidden>
+    <strong>The Keep Alive is now in update mode.</strong>
+    Flash the new firmware, then unplug and reconnect it.
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<template id="presetTpl">
+  <article class="preset">
+    <header>
+      <h3>Preset <span class="pn"></span></h3>
+      <span class="badge" hidden>Active</span>
+      <button class="btn small use" type="button">Use this preset</button>
+    </header>
+    <div class="field">
+      <label class="flabel">Pulse current</label>
+      <div class="range-row">
+        <input class="ma-range" type="range" min="0" step="1">
+        <span class="numwrap"><input class="ma" type="number" min="0" step="1" inputmode="numeric"><span>mA</span></span>
+      </div>
+    </div>
+    <div class="two">
+      <div class="field">
+        <label class="flabel">On for</label>
+        <span class="numwrap"><input class="on" type="number" min="0.01" step="0.01" inputmode="decimal"><span>s</span></span>
+      </div>
+      <div class="field">
+        <label class="flabel">Off for</label>
+        <span class="numwrap"><input class="off" type="number" min="0" step="0.01" inputmode="decimal"><span>s</span></span>
+      </div>
+    </div>
+    <label class="check"><input class="cont" type="checkbox"> Continuous load (no off time)</label>
+    <p class="summary"></p>
+    <p class="ferr" hidden></p>
+  </article>
+</template>
+</body>
+</html>

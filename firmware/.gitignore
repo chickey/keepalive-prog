@@ -1,0 +1,8 @@
+# build output
+/keepalive.bin
+/keepalive.hex
+/keepalive.elf
+/keepalive.lst
+/keepalive.map
+/keepalive_ext.bin
+test/test_host
