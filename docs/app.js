@@ -1,5 +1,6 @@
 import { Link, SerialTransport, DeviceError, PAGE_PROTO, parseKV } from './link.js';
 import { MockTransport } from './mock.js';
+import { initTheme } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -476,36 +477,6 @@ function drawChart() {
   ctx.beginPath(); ctx.arc(x(now), y(endV), 3, 0, Math.PI * 2); ctx.fill();
 }
 
-/* ---------- theme ---------- */
-
-// System setting by default; the button overrides it. Switching back to the
-// system's own choice clears the override so the page follows the OS again.
-const sysDark = window.matchMedia('(prefers-color-scheme: dark)');
-const btnTheme = $('btnTheme');
-
-function effectiveTheme() {
-  return document.documentElement.dataset.theme || (sysDark.matches ? 'dark' : 'light');
-}
-
-function renderThemeButton() {
-  const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-  btnTheme.dataset.next = next;
-  btnTheme.setAttribute('aria-label', `Switch to ${next} mode`);
-  btnTheme.title = `Switch to ${next} mode`;
-}
-
-function toggleTheme() {
-  const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-  const system = sysDark.matches ? 'dark' : 'light';
-  try {
-    if (next === system) { delete document.documentElement.dataset.theme; localStorage.removeItem('ka-theme'); }
-    else { document.documentElement.dataset.theme = next; localStorage.setItem('ka-theme', next); }
-  } catch {
-    document.documentElement.dataset.theme = next;
-  }
-  renderThemeButton();
-}
-
 /* ---------- wiring ---------- */
 
 function init() {
@@ -522,9 +493,7 @@ function init() {
   el.btnRun.addEventListener('click', toggleRun);
   el.testForm.addEventListener('submit', testPulse);
   el.btnBoot.addEventListener('click', enterBoot);
-  btnTheme.addEventListener('click', toggleTheme);
-  sysDark.addEventListener('change', renderThemeButton);
-  renderThemeButton();
+  initTheme($('btnTheme'));
   window.addEventListener('resize', drawChart);
   window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
   if (location.hash === '#demo') connect(true);
