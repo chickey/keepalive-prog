@@ -42,15 +42,33 @@ current preset.
 ## Building
 
 ```
-git submodule add https://github.com/cnlohr/ch32fun firmware/ch32fun   # once, from the repo root
+git submodule update --init      # once after cloning, fetches ch32fun
 cd firmware
 make            # builds keepalive.bin
 make test       # host tests, needs only a normal C compiler
 ```
 
-Tested with ch32fun `6b247c7` and riscv64-unknown-elf-gcc 13.2. For the
-RISC-V toolchain on macOS see ch32fun's installation guide. If the build
-can't find `string.h`, point `NEWLIB=` at your toolchain's libc headers.
+Tested with ch32fun `6b247c7` and xPack GNU RISC-V Embedded GCC 13.4.0-1.
+
+### Toolchain
+
+Use the [xPack `riscv-none-elf-gcc`](https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases)
+build: it includes newlib, so no `NEWLIB=` setting is needed, and ch32fun
+finds the `riscv-none-elf-` prefix on its own. Homebrew's `riscv64-elf-gcc`
+has no C library and fails on `string.h`.
+
+On an Apple-silicon Mac:
+
+```
+mkdir -p ~/opt && cd ~/opt
+curl -LO https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v13.4.0-1/xpack-riscv-none-elf-gcc-13.4.0-1-darwin-arm64.tar.gz
+tar -xzf xpack-riscv-none-elf-gcc-13.4.0-1-darwin-arm64.tar.gz
+echo 'export PATH="$HOME/opt/xpack-riscv-none-elf-gcc-13.4.0-1/bin:$PATH"' >> ~/.zshrc
+```
+
+Use the `darwin-x64` archive on an Intel Mac, `linux-x64` on Linux.
+After a firmware change, copy `keepalive.bin` and `keepalive.hex` into
+`prebuilt/` and commit them.
 
 ## Flashing
 
