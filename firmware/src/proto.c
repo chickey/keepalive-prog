@@ -237,6 +237,8 @@ void proto_line(char *line)
 			app.led = (uint8_t)v;
 		}
 		reply("led=%u", app.led);
+	} else if (ieq(c, "DIAG")) {
+		reply("awu_us=%lu", (unsigned long)hal_awu_tick_us());
 	} else if (ieq(c, "STATUS")) {
 		cmd_status();
 	} else if (ieq(c, "STREAM")) {

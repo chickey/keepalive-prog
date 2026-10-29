@@ -88,6 +88,14 @@ Device options (firmware 1.0.3+). Without arguments, reports them. Persisted by 
 
 Older firmware answers `ERR 1 unknown command`; the page then hides the option.
 
+### `DIAG`
+Diagnostics for bring-up (firmware 1.0.4+); fields may change between versions.
+```
+> DIAG
+< OK awu_us=21845
+```
+`awu_us` is the standby wake-up timer tick in µs, measured at power-up against the main clock.
+
 ### `DEFAULTS`
 Restore factory presets in RAM, all enabled (still needs `SAVE`).
 

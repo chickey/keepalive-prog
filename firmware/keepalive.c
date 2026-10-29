@@ -109,6 +109,7 @@ static uint32_t boot_at;
 void hal_request_bootloader(void) { boot_pending = 1; boot_at = hal_millis() + BOOT_DELAY_MS; }
 
 uint32_t hal_uid(void) { return ESIG->UID0 ^ ESIG->UID1; }
+uint32_t hal_awu_tick_us(void) { return power_awu_tick_us(); }
 
 // ---------------------------------------------------------------- pulse edges
 void on_pulse_start(uint32_t t, uint16_t set)
@@ -159,6 +160,7 @@ int main(void)
 	store_load();
 	load_zero_cal();
 	power_init();
+	power_calibrate();
 
 	// Pulse from the start, as in keep-alive mode, while waiting to see
 	// whether a computer enumerates us; pause once one does.
@@ -234,8 +236,10 @@ int main(void)
 			if (d > power_min_sleep_ms()) {
 				uint8_t by_button;
 				load_suspend();
-				uint32_t slept = power_deep_sleep(d - 5, &by_button);
-				systick_start(now + slept);
+				uint32_t t0 = hal_millis();   // not now: count the time spent getting here
+				uint32_t late = t0 - now;
+				uint32_t slept = power_deep_sleep(d > late + 5 ? d - 5 - late : 0, &by_button);
+				systick_start(t0 + slept);
 				load_resume();
 				continue;
 			}
