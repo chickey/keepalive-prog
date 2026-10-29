@@ -3,7 +3,7 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#define FW_VERSION      "1.0.4"
+#define FW_VERSION      "1.0.5"
 #define HW_REV          "A"
 #define PROTO_VERSION   1
 
@@ -30,9 +30,14 @@
 // ---- Protocol limits (reported by LIMITS) ----
 #define NPRESETS        3
 #define MA_MAX          325
+// Hard limits to protect the board and the user: pulses up to 30 s, at
+// least as much time off as on (50% duty, so no continuous load), and a
+// whole cycle of at most an hour.
 #define ON_MIN_MS       10
-#define ON_MAX_MS       600000u
-#define OFF_MAX_MS      3600000u
+#define ON_MAX_MS       30000u
+#define PERIOD_MAX_MS   3600000u
+#define DUTY_MAX_PCT    50
+#define OFF_MAX_MS      (PERIOD_MAX_MS - ON_MIN_MS)
 #define STREAM_MIN_MS   100
 #define STREAM_MAX_MS   60000u
 

@@ -58,7 +58,7 @@ int main(void)
 	// Identification and limits
 	EXPECT_REPLY("HELLO", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D");
 	EXPECT_REPLY("hello", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D");
-	EXPECT_REPLY("LIMITS", "OK presets=3 ma_max=325 on_min=10 on_max=600000 off_max=3600000 stream_min=100 stream_max=60000");
+	EXPECT_REPLY("LIMITS", "OK presets=3 ma_max=325 on_min=10 on_max=30000 off_max=3599990 period_max=3600000 duty_max=50 stream_min=100 stream_max=60000");
 
 	// Presets
 	EXPECT_REPLY("GET 1", "OK p=1 ma=50 on=500 off=4500 en=1");
@@ -67,15 +67,22 @@ int main(void)
 	EXPECT_PREFIX("GET 4", "ERR 3");
 	EXPECT_PREFIX("GET x", "ERR 2");
 	EXPECT_REPLY("SET 2 ma=140", "OK p=2 ma=140 on=500 off=4500 en=1");
-	EXPECT_REPLY("SET 2 on=250 off=0", "OK p=2 ma=140 on=250 off=0 en=1");
+	EXPECT_REPLY("SET 2 on=250 off=250", "OK p=2 ma=140 on=250 off=250 en=1");   // 50% duty is the limit
 	EXPECT_PREFIX("SET 2 ma=326", "ERR 3");
 	EXPECT_PREFIX("SET 2 on=9", "ERR 3");
+	EXPECT_PREFIX("SET 2 off=0", "ERR 3 off must be at least on");        // no continuous load
+	EXPECT_PREFIX("SET 2 off=249", "ERR 3");                               // just over 50% duty
+	EXPECT_PREFIX("SET 2 on=30001 off=40000", "ERR 3 on must be");         // pulse over 30 s
+	EXPECT_REPLY("SET 2 on=30000 off=30000", "OK p=2 ma=140 on=30000 off=30000 en=1");
+	EXPECT_PREFIX("SET 2 off=3570001", "ERR 3 on + off must be at most 1 hour");
+	EXPECT_REPLY("SET 2 off=3570000", "OK p=2 ma=140 on=30000 off=3570000 en=1");
 	EXPECT_PREFIX("SET 2 off=3600001", "ERR 3");
+	EXPECT_REPLY("SET 2 on=250 off=250", "OK p=2 ma=140 on=250 off=250 en=1");
 	EXPECT_PREFIX("SET 2 foo=1", "ERR 2");
 	EXPECT_PREFIX("SET 2 ma=-5", "ERR 2");
 	EXPECT_PREFIX("SET 2 ma=1234567890", "ERR 2");
 	EXPECT_PREFIX("SET", "ERR 2");
-	EXPECT_REPLY("GET 2", "OK p=2 ma=140 on=250 off=0 en=1"); // failed SETs changed nothing
+	EXPECT_REPLY("GET 2", "OK p=2 ma=140 on=250 off=250 en=1"); // failed SETs changed nothing
 	EXPECT_REPLY("DEFAULTS", "OK defaults");
 	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
 	EXPECT_REPLY("SELECT 3", "OK active=3");
@@ -153,15 +160,21 @@ int main(void)
 	EXPECT(last_dur == 2000, "test width %u", (unsigned)last_dur);
 	EXPECT(!sched_testing(), "test finished");
 
-	// Continuous load
-	EXPECT_REPLY("SET 1 off=0", "OK p=1 ma=60 on=500 off=0 en=1");
-	EXPECT(sched_update(now_ms + 1) == 60, "continuous on");
-	now_ms += 1;
-	run_until(now_ms + 10000, 5);
-	EXPECT(sched_update(now_ms) == 60, "continuous stays on");
+	// Clamping presets saved by older firmware
+	{
+		preset_t q = { 60, 600000, 0, 1 };        // 10 min continuous-ish
+		preset_clamp(&q);
+		EXPECT(q.on == 30000 && q.off == 30000, "clamp long/continuous -> %lu/%lu", (unsigned long)q.on, (unsigned long)q.off);
+		preset_t r = { 60, 20000, 3600000, 1 };   // over an hour per cycle
+		preset_clamp(&r);
+		EXPECT(r.on == 20000 && r.off == 3580000, "clamp period -> %lu/%lu", (unsigned long)r.on, (unsigned long)r.off);
+		preset_t ok = { 50, 500, 4500, 1 };
+		preset_clamp(&ok);
+		EXPECT(ok.on == 500 && ok.off == 4500 && !preset_check(&ok), "valid preset unchanged");
+	}
 
-	// Disabled preset draws nothing
-	EXPECT_REPLY("SET 1 ma=0", "OK p=1 ma=0 on=500 off=0 en=1");
+	// No-load preset draws nothing
+	EXPECT_REPLY("SET 1 ma=0", "OK p=1 ma=0 on=500 off=4500 en=1");
 	EXPECT(sched_update(now_ms + 1) == 0, "disabled preset off");
 
 	// Next-edge calculation

@@ -7,8 +7,9 @@ import { initTheme } from './theme.js';
 const $ = (id) => document.getElementById(id);
 const el = {
   connState: $('connState'), unsupported: $('unsupported'),
-  fwInfo: $('fwInfo'), fwNote: $('fwNote'),
-  btnRestart: $('btnRestart'), kaFound: $('kaFound'), viaBoot: $('viaBoot'),
+  fwDevice: $('fwDevice'), fwDeviceSub: $('fwDeviceSub'), fwAvail: $('fwAvail'), fwAvailSub: $('fwAvailSub'),
+  fwStatus: $('fwStatus'), fwNote: $('fwNote'),
+  btnRestart: $('btnRestart'), viaBoot: $('viaBoot'),
   btnConnect: $('btnConnect'), btnDemo: $('btnDemo'), btnDisconnect: $('btnDisconnect'),
   device: $('device'), chipInfo: $('chipInfo'), protNote: $('protNote'), btnFlash: $('btnFlash'), btnUnlock: $('btnUnlock'),
   progress: $('progress'), stage: $('stage'), pct: $('pct'), barFill: $('barFill'),
@@ -91,11 +92,14 @@ async function loadFirmware() {
     }
     if (bytes.length > APP_LIMIT) throw new Error(`${m.file} is too big for the chip`);
     fw = { ...m, bytes };
-    el.fwInfo.innerHTML = `<b>Keep Alive ${esc(m.version)}</b> · ${kb(bytes.length)}${m.built ? ` · built ${esc(m.built)}` : ''} · for ${esc(m.chip || 'CH32X035F8U6')}`;
+    el.fwAvail.textContent = m.version;
+    el.fwAvailSub.textContent = `${kb(bytes.length)}${m.built ? ` · built ${m.built}` : ''} · for ${m.chip || 'CH32X035F8U6'}`;
+    renderFwStatus();
     if (m.note) { el.fwNote.textContent = m.note; el.fwNote.hidden = false; }
   } catch (e) {
     fw = null;
-    el.fwInfo.textContent = 'The firmware file could not be loaded.';
+    el.fwAvail.textContent = 'Not available';
+    el.fwAvailSub.textContent = 'The firmware file could not be loaded.';
     showResult('error', `<strong>No firmware to install.</strong> ${esc(e.message)}. Try reloading the page.`);
   }
   updateButtons();
@@ -146,14 +150,38 @@ async function detectKeepAlive() {
     const { link, hello } = await openKeepAlive(new SerialTransport(kaPort));
     await link.close();
     showFound(hello.fw);
-  } catch { /* busy (config page open) or unplugged: say nothing */ }
+  } catch (e) {
+    if (e?.code === 'serial-busy') {
+      el.fwDevice.textContent = "Couldn't check";
+      el.fwDeviceSub.textContent = 'It may be open in the config page: click Disconnect there and reload';
+    }
+  }
 }
 
+let deviceFw = null;
 function showFound(version) {
-  const same = fw && version === fw.version;
-  el.kaFound.innerHTML = `Found a Keep Alive running firmware <b>${esc(version)}</b>.` +
-    (same ? ' That is already the version on offer here.' : '');
-  el.kaFound.hidden = false;
+  deviceFw = version;
+  el.fwDevice.textContent = version;
+  el.fwDeviceSub.textContent = 'Currently installed';
+  renderFwStatus();
+}
+
+// 1.0.4 < 1.0.5-test1 < 1.0.5 (a pre-release label sorts before its release).
+function cmpVersion(a, b) {
+  const p = (v) => { const m = /^(\d+)\.(\d+)\.(\d+)(-.*)?/.exec(v) || []; return [+m[1] || 0, +m[2] || 0, +m[3] || 0, m[4] ? 0 : 1, m[4] || '']; };
+  const x = p(a), y = p(b);
+  for (let i = 0; i < 4; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return x[4] === y[4] ? 0 : (x[4] < y[4] ? -1 : 1);
+}
+
+function renderFwStatus() {
+  if (!fw || !deviceFw) { el.fwStatus.hidden = true; return; }
+  const c = cmpVersion(deviceFw, fw.version);
+  el.fwStatus.dataset.s = c < 0 ? 'update' : c === 0 ? 'same' : 'newer';
+  el.fwStatus.textContent = c < 0 ? `Update available: ${deviceFw} → ${fw.version}`
+    : c === 0 ? 'Your Keep Alive already has this version. You can reinstall it if you need to.'
+    : `Your Keep Alive has newer firmware (${deviceFw}) than this page offers (${fw.version}).`;
+  el.fwStatus.hidden = false;
 }
 
 // Restart the running Keep Alive into its bootloader and connect to that.
@@ -185,7 +213,9 @@ async function restart(demo) {
       }
       st = new SerialTransport(kaPort);
     }
-    ({ link } = await openKeepAlive(st));
+    const found = await openKeepAlive(st);
+    link = found.link;
+    showFound(found.hello.fw);
     // Open the device list now, while this click still counts; the bootloader
     // appears in it a moment after the restart.
     const usb = demo ? MockUsbTransport.request(demoScenario() || 'ok') : UsbTransport.request();
@@ -327,6 +357,10 @@ async function flash() {
     stage = 'reset';
     await isp.end();
     await dropConnection();
+    deviceFw = fw.version;
+    el.fwDevice.textContent = fw.version;
+    el.fwDeviceSub.textContent = 'Just installed';
+    renderFwStatus();
     showResult('ok', `<strong>Keep Alive ${esc(fw.version)} installed and checked.</strong>
       It restarts by itself. If the <a href="./">config page</a> can't find it, unplug it and plug it back in (without holding BOOT).`);
   } catch (e) {

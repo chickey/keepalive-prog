@@ -41,6 +41,10 @@ typedef struct {
 void app_defaults(void);
 // Next enabled preset after n (wrapping); n itself if it is the only one.
 uint8_t app_next_enabled(uint8_t n);
+// Checks a preset against the limits; NULL if fine, else what's wrong.
+const char *preset_check(const preset_t *p);
+// Pulls a preset into the limits (for presets saved by older firmware).
+void preset_clamp(preset_t *p);
 
 // ---- Scheduler (sched.c) ----
 void     sched_restart(uint32_t now);                        // schedule changed: end pulse, restart cycle

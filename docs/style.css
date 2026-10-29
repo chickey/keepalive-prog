@@ -244,8 +244,6 @@ a.btn { text-decoration: none; display: inline-block; }
 code { font-family: var(--mono); font-size: 0.88em; padding: 1px 5px; border-radius: 4px; background: var(--surface-2); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .fwcard, .flashcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; display: grid; gap: 12px; }
-.fwinfo { margin: 4px 0 0; color: var(--muted); font-variant-numeric: tabular-nums; }
-.fwinfo b { color: var(--fg); }
 .flash-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .kv { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .kv div { padding: 10px 12px; background: var(--surface-2); border-radius: 8px; min-width: 0; }
@@ -271,3 +269,11 @@ code { font-family: var(--mono); font-size: 0.88em; padding: 1px 5px; border-rad
 .opts .check { color: var(--fg); font-size: 0.92rem; }
 .opts input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 .opts .hint { margin-top: 2px; }
+
+/* Firmware versions on the flash page */
+.kv.kv2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kv .fwver { font-size: 1.15rem; font-weight: 600; font-family: var(--mono); }
+.kv .fwsub { margin-top: 2px; font-family: var(--font); font-size: 0.8rem; color: var(--muted); }
+.fwstatus { margin: 0; padding: 8px 12px; border-radius: 8px; font-weight: 500; font-size: 0.92rem; background: var(--surface-2); }
+.fwstatus[data-s="update"] { background: var(--accent-soft); color: var(--accent); }
+.fwstatus[data-s="newer"] { background: var(--warn-bg); color: var(--warn); }

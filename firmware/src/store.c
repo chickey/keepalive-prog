@@ -50,8 +50,10 @@ static uint32_t valid(const record_t *r)
 	if (((fl & LED_MASK) >> LED_SHIFT) > 2) return 0;
 	for (int i = 0; i < NPRESETS; i++) {
 		if (r->p[i].ma > MA_MAX) return 0;
-		if (r->p[i].on < ON_MIN_MS || r->p[i].on > ON_MAX_MS) return 0;
-		if (r->p[i].off > OFF_MAX_MS) return 0;
+		// The widest ranges any version allowed; store_load() then clamps
+		// presets from before the 1.0.5 limits instead of losing them.
+		if (r->p[i].on < ON_MIN_MS || r->p[i].on > 600000u) return 0;
+		if (r->p[i].off > 3600000u) return 0;
 	}
 	return fl;
 }
@@ -68,6 +70,7 @@ void store_load(void)
 			app.presets[i].on = r->p[i].on;
 			app.presets[i].off = r->p[i].off;
 			app.presets[i].en = (uint8_t)((fl >> i) & 1);
+			preset_clamp(&app.presets[i]);
 		}
 	} else {
 		app_defaults();
