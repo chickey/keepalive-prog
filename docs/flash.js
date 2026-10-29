@@ -16,6 +16,7 @@ let fw = null;        // { version, bytes, ... } once loaded
 let transport = null;
 let isp = null;
 let busy = false;
+let pinger = 0;
 
 const platform = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
 const isWindows = platform.startsWith('win');
@@ -59,6 +60,7 @@ function updateButtons() {
   el.btnConnect.disabled = busy || !!transport || !webUsb();
   el.btnDemo.disabled = busy || !!transport;
   el.btnDisconnect.disabled = busy;
+  el.btnConnect.disabled ||= !fw;
   el.btnFlash.disabled = busy || !isp || (!fw && !isp.protectedFlash);
 }
 
@@ -126,6 +128,22 @@ async function connect(demo) {
   } finally {
     busy = false; updateButtons();
   }
+  // Install straight away: the bootloader only waits a few seconds.
+  // A locked chip waits for the user instead, with the bootloader kept awake.
+  if (isp && !isp.protectedFlash) await flash();
+  else if (isp) startPinging();
+}
+
+function startPinging() {
+  clearInterval(pinger);
+  pinger = setInterval(async () => {
+    if (!isp || busy) return;
+    try { await isp.ping(); } catch (e) {
+      if (busy) return;
+      await dropConnection();
+      showError(e, 'idle');
+    }
+  }, 1000);
 }
 
 function showDevice(demo) {
@@ -138,7 +156,8 @@ function showDevice(demo) {
   ];
   el.chipInfo.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
   el.protNote.hidden = !isp.protectedFlash;
-  el.btnFlash.textContent = isp.protectedFlash ? 'Unlock chip' : 'Install firmware';
+  el.btnFlash.textContent = 'Unlock chip';
+  el.btnFlash.hidden = !isp.protectedFlash;
   el.btnFlash.classList.toggle('danger', isp.protectedFlash);
   el.btnFlash.classList.toggle('primary', !isp.protectedFlash);
   el.progress.hidden = true;
@@ -147,6 +166,7 @@ function showDevice(demo) {
 }
 
 async function dropConnection() {
+  clearInterval(pinger);
   const t = transport;
   transport = null; isp = null;
   el.device.hidden = true;
@@ -206,7 +226,7 @@ async function unlock() {
     setConn('busy', 'Unlocking…');
     await isp.unprotect();
     await dropConnection();
-    showResult('warn', `<strong>Chip unlocked.</strong> Unplug the Keep Alive, hold BOOT, plug it in again, then click <b>Connect</b> and install the firmware.`);
+    showResult('warn', `<strong>Chip unlocked.</strong> Unplug the Keep Alive, then click <b>Install firmware</b> again and follow the steps.`);
   } catch (e) {
     await dropConnection();
     showError(e, 'unlock');
@@ -220,7 +240,7 @@ async function unlock() {
 function showError(e, stage) {
   log('!', `${stage}: ${e?.code || e?.name || ''} ${e?.message || e}`);
   const code = e?.code;
-  const replug = 'Unplug the Keep Alive, hold BOOT while plugging it back in, then click <b>Connect</b> and try again.';
+  const replug = 'Unplug the Keep Alive, click <b>Install firmware</b> and follow the steps again.';
 
   if (code === 'open' || code === 'claim' || e?.name === 'SecurityError') {
     let fix;
@@ -239,7 +259,7 @@ function showError(e, stage) {
     showResult('error', `<strong>The check after writing failed.</strong> ${esc(e.message)} ${replug} If it keeps failing, try a different cable or USB port.`);
     return;
   }
-  const what = { connect: 'while connecting', erase: 'while erasing', write: 'while writing', verify: 'while checking', reset: 'while restarting', unlock: 'while unlocking' }[stage] || '';
+  const what = { idle: 'while waiting', connect: 'while connecting', erase: 'while erasing', write: 'while writing', verify: 'while checking', reset: 'while restarting', unlock: 'while unlocking' }[stage] || '';
   const lost = code === 'timeout' || code === 'usb' || e?.name === 'NetworkError' || e?.name === 'NotFoundError';
   const safe = stage === 'write' || stage === 'erase' || stage === 'verify'
     ? ' Nothing is broken: update mode is built into the chip and can\'t be erased, so you can always start again.' : '';
@@ -261,7 +281,7 @@ function init() {
     navigator.usb.addEventListener('disconnect', (e) => {
       if (transport instanceof UsbTransport && transport.device === e.device && !busy) {
         dropConnection(); updateButtons();
-        showResult('', 'The Keep Alive was unplugged.');
+        showResult('error', `<strong>The Keep Alive left update mode.</strong> It only waits a few seconds before starting its normal firmware. Unplug it, click <b>Install firmware</b> and plug it in while holding BOOT.`);
       }
     });
   }

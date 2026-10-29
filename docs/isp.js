@@ -45,9 +45,12 @@ export class IspError extends Error {
 export class UsbTransport {
   constructor(device) { this.device = device; this.closed = false; }
 
-  // Shows the browser's device chooser. Rejects with NotFoundError if the user cancels.
+  // Uses a bootloader this site already has permission for if one is plugged in;
+  // otherwise shows the browser's device chooser (NotFoundError if cancelled).
   static async request() {
-    const device = await navigator.usb.requestDevice({ filters: USB_FILTERS });
+    const known = (await navigator.usb.getDevices())
+      .find((d) => USB_FILTERS.some((f) => f.vendorId === d.vendorId && f.productId === d.productId));
+    const device = known || await navigator.usb.requestDevice({ filters: USB_FILTERS });
     return new UsbTransport(device);
   }
 
@@ -117,9 +120,22 @@ export class Isp {
     this.chip = null;   // { chipId, family, name }
     this.config = null; // { rdpr, wrpr, btver, uid }
     this.key = null;
+    this.queue = Promise.resolve();
   }
 
-  async transfer(cmd, payload, timeoutMs = 1000) {
+  // One request/reply at a time, so a keep-alive ping can't interleave with flashing.
+  transfer(cmd, payload, timeoutMs = 1000) {
+    const run = () => this._transfer(cmd, payload, timeoutMs);
+    const p = this.queue.then(run, run);
+    this.queue = p.catch(() => {});
+    return p;
+  }
+
+  // The bootloader gives up and starts the old firmware after a few seconds
+  // without ISP traffic, so the page pings it while it waits for the user.
+  ping() { return this.transfer(CMD.READ_CONFIG, [CFG_MASK_ALL, 0]); }
+
+  async _transfer(cmd, payload, timeoutMs) {
     const req = packet(cmd, payload);
     this.onLog('>', hex(req.subarray(0, 3)) + ' ' + hex(req.subarray(3, 24)) + (req.length > 24 ? '…' : ''));
     await this.t.send(req);

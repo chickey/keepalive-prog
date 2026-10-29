@@ -23,14 +23,16 @@ gets served. Web Serial needs HTTPS, which Pages provides.
 ## Firmware flasher
 
 `docs/flash.html` (linked from the config page) installs firmware from the
-browser over WebUSB, using the CH32X035's built-in USB bootloader. Hold the
-BOOT button while plugging the Keep Alive in, so it appears as the WCH
-bootloader (USB ID `4348:55E0`), then click **Connect** and **Install
-firmware**. It checks the chip is a CH32X035F8U6, erases, writes, verifies and
+browser over WebUSB, using the CH32X035's built-in USB bootloader. Click
+**Install firmware**, then hold the BOOT button while plugging the Keep Alive
+in. It appears as the WCH bootloader (USB ID `1A86:55E0` or `4348:55E0`;
+Chrome lists it as an unknown device from QinHeng Electronics). Pick it
+straight away: the bootloader starts the normal firmware again after about
+5 seconds without traffic. Installing then starts by itself. It checks the chip is a CH32X035F8U6, erases, writes, verifies and
 restarts it. Needs Chrome, Edge or Opera on a desktop computer.
 
 - **Windows:** WebUSB can't open the device while WCH's own driver owns it.
-  Install the WinUSB driver for `4348:55E0` with [Zadig](https://zadig.akeo.ie/)
+  Install the WinUSB driver for the bootloader (`1A86:55E0` or `4348:55E0`) with [Zadig](https://zadig.akeo.ie/)
   once; the page's *Trouble connecting* section walks through it.
 - **Linux:** needs a udev rule (shown on the page).
 - **macOS:** works as is.
