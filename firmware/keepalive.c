@@ -137,9 +137,13 @@ int main(void)
 	load_zero_cal();
 	power_init();
 
-	app.host = usbio_detect_and_attach(hal_millis);
-	app.run = !app.host;            // paused while connected to a computer
-	ui_set_base(app.host ? LED_BASE_ON : LED_BASE_OFF);
+	// Pulse from the start, as in keep-alive mode, while waiting to see
+	// whether a computer enumerates us; pause once one does.
+	usbio_detect_and_attach(ms);
+	int usb = usbio_host_poll(ms);
+	app.host = 0;
+	app.run = 1;
+	ui_set_base(LED_BASE_OFF);
 	ui_blink(app.active);
 	sched_restart(ms);
 
@@ -148,6 +152,15 @@ int main(void)
 	for (;;) {
 		uint32_t now = ms;
 
+		if (usb == USB_WAITING) {
+			usb = usbio_host_poll(now);
+			if (usb == USB_HOST) {
+				app.host = 1;
+				app.run = 0;            // paused while connected to a computer
+				sched_restart(now);
+				if (!faults) ui_set_base(LED_BASE_ON);
+			}
+		}
 		usbio_poll();
 
 		int ev = ui_poll(now);
@@ -182,7 +195,8 @@ int main(void)
 		}
 
 		// Keep-alive mode: deep sleep until the next thing needs doing.
-		if (DEEP_SLEEP && !app.host && !cur_set && !faults && !ui_busy()) {
+		// Not while waiting for a host: deep sleep would stop USB.
+		if (DEEP_SLEEP && usb == USB_NONE && !cur_set && !faults && !ui_busy()) {
 			uint32_t d = sched_ms_to_next_edge(now);
 			uint32_t r = REMIND_MS - (now - last_remind);
 			if (r < d) d = r;

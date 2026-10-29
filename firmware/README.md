@@ -12,12 +12,17 @@ checklist below on the first samples.
 
 At power-up it decides where it is plugged in:
 
-- **Computer** (a USB host enumerates it within 1.5 s): appears as the serial
+- **Computer** (a USB host enumerates it within 60 s): appears as the serial
   port "Eplop Keep Alive", LED on, pulsing paused. The config page can start a
-  trial (`RUN 1`) or fire a test pulse.
+  trial (`RUN 1`) or fire a test pulse. The wait is long because macOS on
+  laptops asks the user to allow a new USB accessory before enumerating it.
 - **Power bank** (no host, or something already pulling D+/D− high): stays
   off the data lines, runs the active preset, and sleeps in standby between
   pulses. The LED blinks the preset number every 10 s.
+
+It runs the active preset from power-up while it waits for a host, so a power
+bank is kept awake during the 60 s; deep sleep only starts once it has given
+up on a host and let go of the data lines.
 
 In both modes the PRESET button steps through presets 1→2→3 (saved
 immediately, LED blinks the number); a long press (1.5 s) just shows the
