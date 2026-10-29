@@ -19,6 +19,7 @@ void hal_status(status_t *s) { s->vbus_mv = 5010; s->ma = 0; s->set = 0; s->stat
 int hal_save(void) { saved++; return 0; }
 void hal_request_bootloader(void) { boot_req = 1; }
 uint32_t hal_uid(void) { return 0x1A2B3C4D; }
+uint32_t hal_awu_tick_us(void) { return 16000; }
 void out_line(const char *s)
 {
 	snprintf(last, sizeof last, "%s", s);
@@ -101,6 +102,7 @@ int main(void)
 	EXPECT_PREFIX("OPTS led=3", "ERR 3");
 	EXPECT_PREFIX("OPTS remind=1", "ERR 2");
 	EXPECT_REPLY("OPTS led=2", "OK led=2");
+	EXPECT_REPLY("DIAG", "OK awu_us=16000");
 	EXPECT_REPLY("DEFAULTS", "OK defaults");          // re-enables everything
 	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
 	EXPECT_REPLY("SAVE", "OK saved");

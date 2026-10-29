@@ -1,9 +1,9 @@
 {
   "name": "Keep Alive",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "file": "keepalive.bin",
-  "size": 15940,
-  "sha256": "26b102557a89b3bdb56aa7bd262e46957d2b258e6fe9b75643382616bd715e2b",
+  "size": 16116,
+  "sha256": "df013842b6f3a168d9be8dceff6ec1317e6cda86ee14867e41663ecc7069cc35",
   "built": "2026-10-29",
   "chip": "CH32X035F8U6",
   "note": "Pre-release build: tested on one board (Mac and a power bank)."

@@ -63,6 +63,7 @@ void     hal_status(status_t *s);
 int      hal_save(void);                  // 0 = ok
 void     hal_request_bootloader(void);    // reboot after the reply is sent
 uint32_t hal_uid(void);
+uint32_t hal_awu_tick_us(void);           // measured standby wake-up tick
 void     out_line(const char *s);         // send s + "\n" to the host
 
 #endif
