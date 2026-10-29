@@ -59,12 +59,13 @@
     <h2 id="howTitle">Install it</h2>
     <ol class="steps">
       <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
-      <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive into this computer. Keep holding for a second, then let go. It's now waiting for new firmware.</span></li>
-      <li><span>Click <b>Connect</b> and pick the device in the list. It has a generic name such as <i>USB Module</i>; if the list is empty, see <a href="#help">Trouble connecting</a>.</span></li>
-      <li><span>Click <b>Install firmware</b> and leave it plugged in until this page says it's done (usually under half a minute).</span></li>
+      <li><span>Click <b>Install firmware</b>. A list of devices opens; it's empty for now.</span></li>
+      <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive into this computer. Keep holding for a second, then let go.</span></li>
+      <li><span>Straight away, pick it in the list and click <b>Connect</b>. It's listed as an <i>unknown device from QinHeng Electronics</i>, the maker of the chip inside (also known as WCH). It only waits a few seconds before starting its normal firmware; if it vanishes from the list, unplug it and plug it in again with BOOT held.</span></li>
+      <li><span>Installing starts by itself. Leave it plugged in until this page says it's done.</span></li>
     </ol>
     <div class="actions">
-      <button id="btnConnect" class="btn primary" type="button">Connect</button>
+      <button id="btnConnect" class="btn primary" type="button">Install firmware</button>
       <button id="btnDemo" class="btn" type="button">Try demo</button>
     </div>
     <p class="hint">Works in Chrome, Edge or Opera on a desktop computer. Your saved presets are normally kept.</p>
@@ -78,8 +79,8 @@
     <dl id="chipInfo" class="kv"></dl>
     <p id="protNote" class="notice warn" hidden>
       <strong>This chip's flash is locked (read-protected).</strong>
-      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive,
-      hold BOOT, plug it in again and click Connect.
+      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive
+      and click Install firmware again.
     </p>
     <div class="actions">
       <button id="btnFlash" class="btn primary" type="button">Install firmware</button>
@@ -96,8 +97,8 @@
     <summary>Trouble connecting</summary>
     <div class="adv-body help">
       <div class="adv-item col">
-        <h3>The device list is empty</h3>
-        <p>The Keep Alive only shows up while it's in update mode. Unplug it, then hold BOOT <em>before</em> plugging it in and keep holding for a second. If it still doesn't appear, try another cable: some USB cables only carry power.</p>
+        <h3>The device list is empty, or it appears and vanishes</h3>
+        <p>The Keep Alive only shows up while it's in update mode, and it leaves update mode after a few seconds if nothing talks to it. Open the list first (click <b>Install firmware</b>), then hold BOOT <em>before</em> plugging it in and keep holding for a second, and pick it as soon as it appears. If it doesn't appear at all, try another cable: some USB cables only carry power.</p>
       </div>
       <div class="adv-item col">
         <h3>Windows: “couldn't open the device”</h3>
@@ -105,7 +106,7 @@
         <ol class="plain">
           <li>Put the Keep Alive in update mode (hold BOOT while plugging it in).</li>
           <li>Download and run <a href="https://zadig.akeo.ie/" target="_blank" rel="noopener">Zadig</a>.</li>
-          <li>Choose <b>Options → List All Devices</b>, then pick the device with USB ID <code>4348 55E0</code> (often called <i>USB Module</i>).</li>
+          <li>Choose <b>Options → List All Devices</b>, then pick the device with USB ID <code>4348 55E0</code> or <code>1A86 55E0</code> (often called <i>USB Module</i>).</li>
           <li>Set the driver on the right to <b>WinUSB</b> and click <b>Replace Driver</b> (or <b>Install Driver</b>).</li>
           <li>Unplug the Keep Alive, return here and start again from step 1.</li>
         </ol>
@@ -114,7 +115,7 @@
       <div class="adv-item col">
         <h3>Linux: “couldn't open the device”</h3>
         <p>Your user needs permission to open the device. Add a udev rule, then unplug and replug the Keep Alive:</p>
-        <pre class="log code">echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="4348", ATTRS{idProduct}=="55e0", MODE="0666"' | sudo tee /etc/udev/rules.d/50-wch-isp.rules
+        <pre class="log code">printf '%s\n' 'SUBSYSTEM=="usb", ATTRS{idVendor}=="4348", ATTRS{idProduct}=="55e0", MODE="0666"' 'SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55e0", MODE="0666"' | sudo tee /etc/udev/rules.d/50-wch-isp.rules
 sudo udevadm control --reload-rules</pre>
       </div>
       <div class="adv-item col">
