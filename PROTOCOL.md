@@ -30,7 +30,7 @@ makes bring-up and support easy. The baud rate is ignored by CDC.
 First command the page sends. Identifies the device and protocol version.
 ```
 > HELLO
-< OK KA-PROG fw=1.0.1 proto=1 hw=A uid=1A2B3C4D
+< OK KA-PROG fw=1.0.2 proto=1 hw=A uid=1A2B3C4D
 ```
 The page refuses to configure a device whose `proto` is newer than it understands, and asks the user to reload the page.
 

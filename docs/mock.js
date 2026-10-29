@@ -147,7 +147,7 @@ export class MockTransport {
 
     switch (cmd.toUpperCase()) {
       case 'HELLO':
-        return this._send('OK KA-PROG fw=1.0.1-demo proto=1 hw=A uid=DEMO0001');
+        return this._send('OK KA-PROG fw=1.0.2-demo proto=1 hw=A uid=DEMO0001');
       case 'LIMITS':
         return this._send(`OK presets=${LIMITS.presets} ma_max=${LIMITS.ma_max} on_min=${LIMITS.on_min} on_max=${LIMITS.on_max} off_max=${LIMITS.off_max} stream_min=${LIMITS.stream_min} stream_max=${LIMITS.stream_max}`);
       case 'GET':

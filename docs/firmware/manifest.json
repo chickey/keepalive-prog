@@ -1,10 +1,10 @@
 {
   "name": "Keep Alive",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "file": "keepalive.bin",
-  "size": 14156,
-  "sha256": "ace53fd447715dee55bc6fe58ae47018e414b522ee6a789ac1cbaf1c4ae666ef",
+  "size": 15536,
+  "sha256": "d3474d92b03c570aa5dd4414da1a698139971a4043a44ac36eaf9907287f1b87",
   "built": "2026-10-29",
   "chip": "CH32X035F8U6",
-  "note": "Pre-release build: this firmware has not yet been tested on real hardware."
+  "note": "Pre-release build: tested on one board (Mac and a power bank)."
 }

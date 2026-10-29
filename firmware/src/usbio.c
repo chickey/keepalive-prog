@@ -81,14 +81,18 @@ void out_line(const char *s)
 uint8_t usbio_tx_empty(void) { return tx_head == tx_tail; }
 uint8_t usbio_port_open(void) { return attached && dtr; }
 
+// The USB DMA reads the packet straight from pkt (copy = 0), so pkt must stay
+// untouched until the endpoint is no longer busy.
 static void tx_pump(void)
 {
-	static uint8_t pkt[63];   // < 64 so every packet is short: no zero-length packets needed
+	static uint32_t pktw[16];
+	uint8_t *pkt = (uint8_t *)pktw;
 	if (tx_head == tx_tail) return;
 	if (USBFSCTX.endpoints[3].busy) return;
 	uint16_t n = 0, t = tx_tail;
-	while (t != tx_head && n < sizeof pkt) { pkt[n++] = (uint8_t)tx[t]; t = (t + 1) & (TX_SIZE - 1); }
-	if (USBFS_SendEndpointNEW(3, pkt, n, 1) == 0) tx_tail = t;
+	// < 64 bytes so every packet is short: no zero-length packets needed
+	while (t != tx_head && n < 63) { pkt[n++] = (uint8_t)tx[t]; t = (t + 1) & (TX_SIZE - 1); }
+	if (USBFS_SendEndpointNEW(3, pkt, n, 0) == 0) tx_tail = t;
 }
 
 void usbio_poll(void)

@@ -3,7 +3,7 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#define FW_VERSION      "1.0.1"
+#define FW_VERSION      "1.0.2"
 #define HW_REV          "A"
 #define PROTO_VERSION   1
 
