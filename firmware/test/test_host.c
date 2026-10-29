@@ -92,6 +92,15 @@ int main(void)
 	EXPECT(app_next_enabled(3) == 3, "only 3 enabled: %d", app_next_enabled(3));
 	EXPECT_REPLY("SET 1 en=1", "OK p=1 ma=50 on=500 off=4500 en=1");
 	EXPECT(app_next_enabled(3) == 1, "next after 3 with 2 disabled: %d", app_next_enabled(3));
+	// Options
+	app.led = LED_MODE_REMIND;
+	EXPECT_REPLY("OPTS", "OK led=2");
+	EXPECT_REPLY("OPTS led=0", "OK led=0");
+	EXPECT_REPLY("opts", "OK led=0");
+	EXPECT_REPLY("OPTS led=1", "OK led=1");
+	EXPECT_PREFIX("OPTS led=3", "ERR 3");
+	EXPECT_PREFIX("OPTS remind=1", "ERR 2");
+	EXPECT_REPLY("OPTS led=2", "OK led=2");
 	EXPECT_REPLY("DEFAULTS", "OK defaults");          // re-enables everything
 	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
 	EXPECT_REPLY("SAVE", "OK saved");

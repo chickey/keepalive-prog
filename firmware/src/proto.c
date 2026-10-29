@@ -226,6 +226,17 @@ void proto_line(char *line)
 		app_defaults();
 		sched_restart(hal_millis());
 		reply("defaults");
+	} else if (ieq(c, "OPTS")) {
+		for (int i = 1; i < nt; i++) {
+			char *eq = strchr(tok[i], '=');
+			if (!eq) { error(E_ARG, "expected key=value"); return; }
+			*eq = 0;
+			if (parse_u32(eq + 1, &v)) { error(E_ARG, "bad number"); return; }
+			if (!ieq(tok[i], "led")) { error(E_ARG, "unknown key"); return; }
+			if (v > LED_MODE_REMIND) { error(E_RANGE, "led must be 0, 1 or 2"); return; }
+			app.led = (uint8_t)v;
+		}
+		reply("led=%u", app.led);
 	} else if (ieq(c, "STATUS")) {
 		cmd_status();
 	} else if (ieq(c, "STREAM")) {

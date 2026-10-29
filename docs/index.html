@@ -102,6 +102,14 @@
     <p class="hint">The button on the Keep Alive steps through these. Its light blinks once, twice or three times to show which is active. Untick <b>Enabled</b> on a preset to leave it out, for example to keep just one.</p>
     <div id="presets" class="presets"></div>
 
+    <fieldset id="lightOpts" class="opts" hidden>
+      <legend>Light when running from a power bank</legend>
+      <label class="check"><input type="radio" name="led" value="0"> Off</label>
+      <label class="check"><input type="radio" name="led" value="1"> Flash briefly with each pulse</label>
+      <label class="check"><input type="radio" name="led" value="2"> Blink the preset number every 10 seconds</label>
+      <p class="hint">Whichever you choose, the light still blinks when you press the button. Off uses the least power.</p>
+    </fieldset>
+
     <details class="advanced">
       <summary>Advanced</summary>
       <div class="adv-body">

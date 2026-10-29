@@ -115,6 +115,7 @@ void on_pulse_start(uint32_t t, uint16_t set)
 {
 	load_pulse_begin();
 	noreg_pulse = 0;
+	if (app.led == LED_MODE_PULSE && !app.host) ui_flash();
 	proto_event("!E on t=%lu set=%u", (unsigned long)t, set);
 }
 
@@ -125,6 +126,13 @@ void on_pulse_end(uint32_t t, uint32_t dur, uint8_t was_test)
 	if (was_test) proto_event("!T done ma=%u", avg);
 	if (noreg_pulse && !noreg_shown) { proto_event("!F NOREG vbus=%u", load_vbus_mv()); noreg_shown = 1; }
 	else if (!noreg_pulse && noreg_shown && !faults) { proto_event("!F CLEAR"); noreg_shown = 0; }
+}
+
+// Blink the active preset's number; just once if it's the only one enabled,
+// where the number means nothing.
+static void blink_active(void)
+{
+	ui_blink(app_next_enabled(app.active) == app.active ? 1 : app.active);
 }
 
 // Unused pins as pulled-up inputs so they don't float (and draw current) in sleep.
@@ -159,7 +167,7 @@ int main(void)
 	app.host = 0;
 	app.run = 1;
 	ui_set_base(LED_BASE_OFF);
-	ui_blink(app.active);
+	blink_active();
 	sched_restart(hal_millis());
 
 	uint32_t last_stream = hal_millis(), last_remind = last_stream;
@@ -180,14 +188,18 @@ int main(void)
 
 		int ev = ui_poll(now);
 		if (ev == UI_SHORT) {
-			app.active = app_next_enabled(app.active);
-			sched_restart(now);
-			store_save();
-			ui_blink(app.active);
-			proto_event("!P active=%u", app.active);
+			uint8_t next = app_next_enabled(app.active);
+			if (next != app.active) {
+				app.active = next;
+				sched_restart(now);
+				store_save();
+				proto_event("!P active=%u", app.active);
+			}
+			// With only one preset enabled, just acknowledge; the timing carries on.
+			blink_active();
 			last_remind = now;
 		} else if (ev == UI_LONG) {
-			ui_blink(app.active);
+			blink_active();
 		}
 
 		fault_poll(now);
@@ -199,9 +211,9 @@ int main(void)
 			proto_stream_status();
 		}
 
-		if (!app.host && !cur_set && now - last_remind >= REMIND_MS) {
+		if (app.led == LED_MODE_REMIND && !app.host && !cur_set && now - last_remind >= REMIND_MS) {
 			last_remind = now;
-			ui_blink(app.active);
+			blink_active();
 		}
 
 		if (boot_pending && (usbio_tx_empty() || (int32_t)(now - boot_at) >= 0)) {
@@ -213,9 +225,13 @@ int main(void)
 		// Not while waiting for a host: deep sleep would stop USB.
 		if (DEEP_SLEEP && usb == USB_NONE && !cur_set && !faults && !ui_busy()) {
 			uint32_t d = sched_ms_to_next_edge(now);
-			uint32_t r = REMIND_MS - (now - last_remind);
-			if (r < d) d = r;
-			if (d != UINT32_MAX && d > power_min_sleep_ms()) {
+			if (app.led == LED_MODE_REMIND) {
+				uint32_t r = REMIND_MS - (now - last_remind);
+				if (r < d) d = r;
+			}
+			// Nothing due (e.g. no blink and a 0 mA preset): sleep in long steps anyway.
+			if (d > 60000u) d = 60000u;
+			if (d > power_min_sleep_ms()) {
 				uint8_t by_button;
 				load_suspend();
 				uint32_t slept = power_deep_sleep(d - 5, &by_button);

@@ -10,7 +10,7 @@ const el = {
   fault: $('fault'), btnRun: $('btnRun'),
   rMa: $('rMa'), rSet: $('rSet'), rVbus: $('rVbus'), rState: $('rState'),
   chart: $('chart'), testForm: $('testForm'), testMa: $('testMa'), testS: $('testS'),
-  presets: $('presets'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), btnBoot: $('btnBoot'), log: $('log'), toast: $('toast'),
+  presets: $('presets'), lightOpts: $('lightOpts'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), btnBoot: $('btnBoot'), log: $('log'), toast: $('toast'),
 };
 
 const STATE_TEXT = { ON: 'Drawing', OFF: 'Between pulses', IDLE: 'Paused', FAULT: 'Fault' };
@@ -91,6 +91,7 @@ async function connect(useDemo) {
       if (n === 1) hasEnable = 'en' in p;
       presets.push(toPreset(p));
     }
+    await loadOpts();
     const st = parseKV(await link.cmd('STATUS'));
     active = st.active;
     running = st.run;
@@ -349,6 +350,34 @@ async function setEnabled(n, on) {
   renderActive();
 }
 
+// Device options (firmware 1.0.3+; older firmware answers OPTS with ERR 1).
+const ledRadios = () => [...el.lightOpts.querySelectorAll('input[name="led"]')];
+let ledMode = 2;
+function renderLed() { for (const r of ledRadios()) r.checked = Number(r.value) === ledMode; }
+
+async function loadOpts() {
+  try {
+    const o = parseKV(await link.cmd('OPTS'));
+    ledMode = o.led ?? 2;
+    renderLed();
+    el.lightOpts.hidden = false;
+  } catch (e) {
+    if (!(e instanceof DeviceError)) throw e;
+    el.lightOpts.hidden = true;
+  }
+}
+
+async function setLed(mode) {
+  try {
+    const o = parseKV(await link.cmd(`OPTS led=${mode}`));
+    ledMode = o.led;
+    setDirty(true);
+  } catch (e) {
+    toast(e.message);
+  }
+  renderLed();
+}
+
 async function select(n) {
   try {
     const r = parseKV(await link.cmd(`SELECT ${n}`));
@@ -520,6 +549,7 @@ function init() {
   el.btnDisconnect.addEventListener('click', disconnect);
   el.btnSave.addEventListener('click', save);
   el.btnDefaults.addEventListener('click', restoreDefaults);
+  for (const r of ledRadios()) r.addEventListener('change', () => setLed(Number(r.value)));
   el.btnRun.addEventListener('click', toggleRun);
   el.testForm.addEventListener('submit', testPulse);
   el.btnBoot.addEventListener('click', enterBoot);

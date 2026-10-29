@@ -30,7 +30,7 @@ makes bring-up and support easy. The baud rate is ignored by CDC.
 First command the page sends. Identifies the device and protocol version.
 ```
 > HELLO
-< OK KA-PROG fw=1.0.2 proto=1 hw=A uid=1A2B3C4D
+< OK KA-PROG fw=1.0.3 proto=1 hw=A uid=1A2B3C4D
 ```
 The page refuses to configure a device whose `proto` is newer than it understands, and asks the user to reload the page.
 
@@ -75,6 +75,18 @@ Write all presets and the active selection to flash. The page calls this only on
 > SAVE
 < OK saved
 ```
+
+### `OPTS` / `OPTS led=<0|1|2>`
+Device options (firmware 1.0.3+). Without arguments, reports them. Persisted by `SAVE`.
+```
+> OPTS led=1
+< OK led=1
+```
+| Option | Meaning |
+|---|---|
+| `led` | The light in keep-alive mode (on a power bank). `0` = off. `1` = one short flash as each pulse starts. `2` (default) = blink the active preset number every 10 s. In every mode the light still blinks on a button press and at power-up, and flashes for faults. On a PC it is on steadily regardless. |
+
+Older firmware answers `ERR 1 unknown command`; the page then hides the option.
 
 ### `DEFAULTS`
 Restore factory presets in RAM, all enabled (still needs `SAVE`).

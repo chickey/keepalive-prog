@@ -18,16 +18,18 @@ At power-up it decides where it is plugged in:
   laptops asks the user to allow a new USB accessory before enumerating it.
 - **Power bank** (no host, or something already pulling D+/D− high): stays
   off the data lines, runs the active preset, and sleeps in standby between
-  pulses. The LED blinks the preset number every 10 s.
+  pulses. By default the LED blinks the preset number every 10 s; the config
+  page can switch it to a short flash with each pulse, or off.
 
 It runs the active preset from power-up while it waits for a host, so a power
 bank is kept awake during the 60 s; deep sleep only starts once it has given
 up on a host and let go of the data lines.
 
 In both modes the PRESET button steps through the enabled presets 1→2→3 (saved
-immediately, LED blinks the number); a long press (1.5 s) just shows the
-current preset. Presets disabled on the config page are skipped; with
-only one enabled, a short press just shows it.
+immediately, LED blinks the number) on a quick tap; holding it for 0.5 s or more just shows the
+current preset. Presets disabled on the config page are skipped. With only
+one preset enabled, the LED blinks once instead of the preset number, and a
+short press just blinks without restarting the pulse timing.
 
 ## Layout
 
