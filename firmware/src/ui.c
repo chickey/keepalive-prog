@@ -2,17 +2,18 @@
 #include "board.h"
 #include "ui.h"
 
-#define DEBOUNCE_MS   30
-#define LONG_MS       1500
+#define DEBOUNCE_MS   50    // contact must be steady this long to count
+#define LOCKOUT_MS    200   // a press this soon after a release is switch chatter
+#define LONG_MS       500   // a tap released sooner = next preset; a hold this long = show it
 #define BLINK_ON_MS   150
 #define BLINK_OFF_MS  250
 #define FAULT_HALF_MS 125
 
 static uint8_t  raw_prev, stable, long_fired;
-static uint32_t raw_since, press_t;
+static uint32_t raw_since, press_t, release_t;
 static uint8_t  blinks_left, led_on, base;
 static uint32_t next_led;
-static uint8_t  kick;
+static uint8_t  kick, gap;   // gap: pause after a blink sequence
 
 static inline void led(uint8_t on) { funDigitalWrite(PIN_LED, on ? FUN_HIGH : FUN_LOW); }
 
@@ -33,8 +34,13 @@ int ui_poll(uint32_t now)
 	if (raw != raw_prev) { raw_prev = raw; raw_since = now; }
 	if (raw != stable && now - raw_since >= DEBOUNCE_MS) {
 		stable = raw;
-		if (stable) { press_t = now; long_fired = 0; }
-		else if (!long_fired) ev = UI_SHORT;
+		if (stable) {
+			press_t = now;
+			long_fired = now - release_t < LOCKOUT_MS;   // ignore chatter: no event for this press
+		} else {
+			if (!long_fired) ev = UI_SHORT;
+			release_t = now;
+		}
 	}
 	if (stable && !long_fired && now - press_t >= LONG_MS) { long_fired = 1; ev = UI_LONG; }
 
@@ -42,12 +48,14 @@ int ui_poll(uint32_t now)
 	if (kick || (int32_t)(now - next_led) >= 0) {
 		kick = 0;
 		if (blinks_left || led_on) {
-			if (led_on) { led_on = 0; led(0); next_led = now + BLINK_OFF_MS; if (blinks_left == 0) next_led = now + 400; }
+			if (led_on) { led_on = 0; led(0); next_led = now + BLINK_OFF_MS; if (blinks_left == 0) { next_led = now + 400; gap = 1; } }
 			else if (blinks_left) { blinks_left--; led_on = 1; led(1); next_led = now + BLINK_ON_MS; }
 		} else if (base == LED_BASE_FAULT) {
+			gap = 0;
 			static uint8_t ph;
 			ph ^= 1; led(ph); next_led = now + FAULT_HALF_MS;
 		} else {
+			gap = 0;
 			led(base == LED_BASE_ON);
 			next_led = now + 50;
 		}
@@ -60,6 +68,14 @@ void ui_blink(uint8_t n)
 	led(0);
 	led_on = 0;
 	blinks_left = n;
+	kick = 1;
+}
+
+// One short flash, unless a blink sequence is already showing.
+void ui_flash(void)
+{
+	if (blinks_left || led_on || gap) return;
+	blinks_left = 1;
 	kick = 1;
 }
 

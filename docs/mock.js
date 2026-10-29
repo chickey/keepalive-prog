@@ -16,6 +16,7 @@ export class MockTransport {
     this.flash = { presets: DEFAULTS.map((p) => ({ ...p })), active: 1 };
     this.presets = this.flash.presets.map((p) => ({ ...p }));
     this.active = this.flash.active;
+    this.led = 2;
     this.run = 0;
     this.runStart = 0;
     this.test = null;
@@ -147,7 +148,7 @@ export class MockTransport {
 
     switch (cmd.toUpperCase()) {
       case 'HELLO':
-        return this._send('OK KA-PROG fw=1.0.2-demo proto=1 hw=A uid=DEMO0001');
+        return this._send('OK KA-PROG fw=1.0.3-demo proto=1 hw=A uid=DEMO0001');
       case 'LIMITS':
         return this._send(`OK presets=${LIMITS.presets} ma_max=${LIMITS.ma_max} on_min=${LIMITS.on_min} on_max=${LIMITS.on_max} off_max=${LIMITS.off_max} stream_min=${LIMITS.stream_min} stream_max=${LIMITS.stream_max}`);
       case 'GET':
@@ -176,6 +177,13 @@ export class MockTransport {
       case 'DEFAULTS':
         this.presets = DEFAULTS.map((p) => ({ ...p }));
         return this._send('OK defaults');
+      case 'OPTS':
+        for (const [k, v] of Object.entries(args)) {
+          if (k !== 'led') return this._send('ERR 2 unknown key');
+          if (![0, 1, 2].includes(v)) return this._send('ERR 3 led must be 0, 1 or 2');
+          this.led = v;
+        }
+        return this._send(`OK led=${this.led}`);
       case 'STATUS':
         return this._send('OK ' + this._status());
       case 'STREAM':

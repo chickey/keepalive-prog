@@ -76,7 +76,7 @@ class GarbledReply extends Error {}
 // with four bytes zeroed, so control characters mean the line is damaged.
 const GARBLED = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 // Commands that can safely be sent again if the reply was damaged.
-const RETRYABLE = /^(HELLO|LIMITS|GET|SET|SELECT|STATUS|STREAM|RUN|SAVE|DEFAULTS)\b/i;
+const RETRYABLE = /^(HELLO|LIMITS|GET|SET|SELECT|STATUS|STREAM|RUN|SAVE|DEFAULTS|OPTS)\b/i;
 
 export class Link {
   constructor(transport, { onEvent, onClose, onLog } = {}) {

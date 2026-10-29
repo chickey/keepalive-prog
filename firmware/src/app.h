@@ -14,11 +14,15 @@ typedef struct {
 	uint8_t  en;    // 0 = disabled: skipped by the button, can't be selected
 } preset_t;
 
+// Light in keep-alive mode (button presses, power-up and faults always show).
+enum { LED_MODE_OFF, LED_MODE_PULSE, LED_MODE_REMIND };
+
 typedef struct {
 	preset_t presets[NPRESETS];
 	uint8_t  active;      // 1-based
 	uint8_t  run;         // pulsing enabled
 	uint8_t  host;        // enumerated by a USB host (config mode)
+	uint8_t  led;         // keep-alive mode light: LED_MODE_*
 	uint16_t stream_ms;   // 0 = off
 } app_t;
 

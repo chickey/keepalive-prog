@@ -264,3 +264,10 @@ code { font-family: var(--mono); font-size: 0.88em; padding: 1px 5px; border-rad
 @media (max-width: 640px) {
   .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Options under the presets */
+.opts { margin: 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 8px; }
+.opts legend { float: left; width: 100%; padding: 0; margin-bottom: 4px; font-weight: 600; }
+.opts .check { color: var(--fg); font-size: 0.92rem; }
+.opts input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.opts .hint { margin-top: 2px; }
