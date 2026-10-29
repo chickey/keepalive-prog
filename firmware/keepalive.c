@@ -19,27 +19,41 @@ void proto_stream_status(void);
 #define BOOT_DELAY_MS   200u
 
 // ---------------------------------------------------------------- time
+// Time is read from the 64-bit SysTick counter, not counted in the interrupt.
+// 1.0.1 did ms++ and CMP += 1 ms in the interrupt; once a tick was serviced
+// late the compare fell behind the counter, the interrupt stopped and time
+// froze, leaving a pulse (and the LED) on for good. The interrupt now only
+// wakes the main loop from WFI once a millisecond.
 #define TICKS_PER_MS (FUNCONF_SYSTEM_CORE_CLOCK / 1000)
-static volatile uint32_t ms;
+static uint64_t cnt0;      // counter value when the clock read ms_base
+static uint32_t ms_base;
+
+static uint64_t systick_cnt(void)
+{
+	uint32_t h, l;
+	do { h = SysTick->CNTH; l = SysTick->CNTL; } while (h != SysTick->CNTH);
+	return (uint64_t)h << 32 | l;
+}
 
 void SysTick_Handler(void) __attribute__((interrupt));
 void SysTick_Handler(void)
 {
-	SysTick->CMP += TICKS_PER_MS;
+	SysTick->CMP = systick_cnt() + TICKS_PER_MS;
 	SysTick->SR = 0;
-	ms++;
 }
 
-static void systick_start(void)
+// (Re)start the clock reading now_ms, e.g. after standby stopped the counter.
+static void systick_start(uint32_t now_ms)
 {
-	SysTick->CTLR = 0;
-	SysTick->CMP = SysTick->CNT + TICKS_PER_MS;
-	SysTick->SR = 0;
 	SysTick->CTLR = SYSTICK_CTLR_STE | SYSTICK_CTLR_STIE | SYSTICK_CTLR_STCLK;
+	cnt0 = systick_cnt();
+	ms_base = now_ms;
+	SysTick->CMP = cnt0 + TICKS_PER_MS;
+	SysTick->SR = 0;
 	NVIC_EnableIRQ(SysTick_IRQn);
 }
 
-uint32_t hal_millis(void) { return ms; }
+uint32_t hal_millis(void) { return ms_base + (uint32_t)((systick_cnt() - cnt0) / TICKS_PER_MS); }
 
 // ---------------------------------------------------------------- faults
 enum { F_OV = 1, F_UV = 2, F_OC = 4 };
@@ -92,7 +106,7 @@ int hal_save(void) { return store_save(); }
 
 static uint8_t  boot_pending;
 static uint32_t boot_at;
-void hal_request_bootloader(void) { boot_pending = 1; boot_at = ms + BOOT_DELAY_MS; }
+void hal_request_bootloader(void) { boot_pending = 1; boot_at = hal_millis() + BOOT_DELAY_MS; }
 
 uint32_t hal_uid(void) { return ESIG->UID0 ^ ESIG->UID1; }
 
@@ -127,7 +141,8 @@ static void unused_pins_init(void)
 int main(void)
 {
 	SystemInit();
-	systick_start();
+	RCC->AHBPCENR |= RCC_AHBPeriph_SRAM;   // keep SRAM clocked in sleep
+	systick_start(0);
 	funGpioInitAll();
 	unused_pins_init();
 
@@ -139,18 +154,18 @@ int main(void)
 
 	// Pulse from the start, as in keep-alive mode, while waiting to see
 	// whether a computer enumerates us; pause once one does.
-	usbio_detect_and_attach(ms);
-	int usb = usbio_host_poll(ms);
+	usbio_detect_and_attach(hal_millis());
+	int usb = usbio_host_poll(hal_millis());
 	app.host = 0;
 	app.run = 1;
 	ui_set_base(LED_BASE_OFF);
 	ui_blink(app.active);
-	sched_restart(ms);
+	sched_restart(hal_millis());
 
-	uint32_t last_stream = ms, last_remind = ms;
+	uint32_t last_stream = hal_millis(), last_remind = last_stream;
 
 	for (;;) {
-		uint32_t now = ms;
+		uint32_t now = hal_millis();
 
 		if (usb == USB_WAITING) {
 			usb = usbio_host_poll(now);
@@ -204,12 +219,13 @@ int main(void)
 				uint8_t by_button;
 				load_suspend();
 				uint32_t slept = power_deep_sleep(d - 5, &by_button);
-				systick_start();
-				ms += slept;
+				systick_start(now + slept);
 				load_resume();
 				continue;
 			}
 		}
-		__WFI();   // SysTick wakes us every millisecond
+		// No WFI while on USB: with the core asleep, about 1 packet in 20
+		// reached the host with a 4-byte word zeroed (seen on 1.0.1).
+		if (usb == USB_NONE) __WFI();   // SysTick wakes us every millisecond
 	}
 }

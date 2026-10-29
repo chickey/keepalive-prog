@@ -70,10 +70,10 @@ const webUsb = () => 'usb' in navigator && window.isSecureContext;
 
 async function loadFirmware() {
   try {
-    const mres = await fetch('firmware/manifest.json', { cache: 'no-cache' });
+    const mres = await fetch('firmware/manifest.json', { cache: 'no-store' });
     if (!mres.ok) throw new Error(`manifest: HTTP ${mres.status}`);
     const m = await mres.json();
-    const bres = await fetch(`firmware/${m.file}`, { cache: 'no-cache' });
+    const bres = await fetch(`firmware/${m.file}`, { cache: 'no-store' });
     if (!bres.ok) throw new Error(`${m.file}: HTTP ${bres.status}`);
     const bytes = new Uint8Array(await bres.arrayBuffer());
     if (bytes.length !== m.size) throw new Error(`${m.file} is ${bytes.length} bytes, manifest says ${m.size}`);
