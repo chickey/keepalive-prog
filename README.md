@@ -23,13 +23,23 @@ gets served. Web Serial needs HTTPS, which Pages provides.
 ## Firmware flasher
 
 `docs/flash.html` (linked from the config page) installs firmware from the
-browser over WebUSB, using the CH32X035's built-in USB bootloader. Click
-**Install firmware**, then hold the BOOT button while plugging the Keep Alive
-in. It appears as the WCH bootloader (USB ID `1A86:55E0` or `4348:55E0`;
-Chrome lists it as an unknown device from QinHeng Electronics). Pick it
-straight away: the bootloader starts the normal firmware again after about
-5 seconds without traffic. Installing then starts by itself. It checks the chip is a CH32X035F8U6, erases, writes, verifies and
-restarts it. Needs Chrome, Edge or Opera on a desktop computer.
+browser over WebUSB, using the CH32X035's built-in USB bootloader. Needs
+Chrome, Edge or Opera on a desktop computer.
+
+- **Updating a working Keep Alive:** plug it in normally and click **Restart
+  into update mode**. The page sends `BOOT` over Web Serial (the first time,
+  Chrome asks for the serial port), opens the WebUSB device list, and the
+  bootloader appears in it a moment later.
+- **First install, or broken firmware:** open the device list with
+  **Connect**, then hold the BOOT button while plugging the Keep Alive in.
+
+Either way the bootloader shows up as USB ID `1A86:55E0` or `4348:55E0`
+(Chrome: "unknown device from QinHeng Electronics"). Pick it straight away:
+it starts the normal firmware again about 5 seconds after appearing if
+nothing talks to it. Once connected, the page shows the chip and pings the
+bootloader so it stays in update mode; nothing is written until **Install
+firmware** is clicked. It checks the chip is a CH32X035F8U6, erases, writes,
+verifies and restarts it.
 
 - **Windows:** WebUSB can't open the device while WCH's own driver owns it.
   Install the WinUSB driver for the bootloader (`1A86:55E0` or `4348:55E0`) with [Zadig](https://zadig.akeo.ie/)
@@ -46,8 +56,8 @@ cd firmware && make site
 ```
 
 The protocol code (`docs/isp.js`) follows
-[wchisp](https://github.com/ch32-rs/wchisp). **It has only been tested against
-the simulated bootloader so far, not real hardware.**
+[wchisp](https://github.com/ch32-rs/wchisp). It has been used on the first
+Rev A board from macOS; Windows and Linux are untested.
 
 ## Trying the page locally
 
