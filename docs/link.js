@@ -8,8 +8,14 @@ export const PAGE_PROTO = 1;
 // While null, the browser's port picker lists every serial port.
 export const USB_FILTER = null;
 
+// The IDs the firmware currently uses (usb_config.h), for recognising a port
+// this site already has permission for.
+export const KA_USB_IDS = { usbVendorId: 0x1209, usbProductId: 0xd035 };
+
 export class SerialTransport {
-  constructor() {
+  // port: an already-permitted SerialPort; without one, open() shows the port picker.
+  constructor(port = null) {
+    this.port = port;
     this.onLine = null;
     this.onClose = null;
     this.closed = false;
@@ -17,7 +23,7 @@ export class SerialTransport {
 
   async open() {
     const opts = USB_FILTER ? { filters: [USB_FILTER] } : {};
-    this.port = await navigator.serial.requestPort(opts);
+    this.port ||= await navigator.serial.requestPort(opts);
     await this.port.open({ baudRate: 115200 });
     this.writer = this.port.writable.getWriter();
     this._onDisconnect = (e) => { if (e.target === this.port) this.close(); };

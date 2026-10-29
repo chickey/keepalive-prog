@@ -43,7 +43,7 @@
 <main class="wrap">
   <section id="unsupported" class="notice warn" hidden>
     <strong>This browser can't flash the Keep Alive.</strong>
-    Flashing needs WebUSB, which works in Chrome, Edge or Opera on a desktop computer.
+    Flashing needs WebUSB and Web Serial, which work in Chrome, Edge or Opera on a desktop computer.
     You can still see how it works with <em>Try demo</em>.
   </section>
 
@@ -55,21 +55,37 @@
     <p id="fwNote" class="hint" hidden></p>
   </section>
 
-  <section class="intro" aria-labelledby="howTitle">
-    <h2 id="howTitle">Install it</h2>
+  <section id="viaDevice" class="intro" aria-labelledby="updTitle">
+    <h2 id="updTitle">Update your Keep Alive</h2>
     <ol class="steps">
-      <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
-      <li><span>Click <b>Install firmware</b>. A list of devices opens; it's empty for now.</span></li>
-      <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive into this computer. Keep holding for a second, then let go.</span></li>
-      <li><span>Straight away, pick it in the list and click <b>Connect</b>. It's listed as an <i>unknown device from QinHeng Electronics</i>, the maker of the chip inside (also known as WCH). It only waits a few seconds before starting its normal firmware; if it vanishes from the list, unplug it and plug it in again with BOOT held.</span></li>
-      <li><span>Installing starts by itself. Leave it plugged in until this page says it's done.</span></li>
+      <li><span>Plug the Keep Alive into this computer as normal. If the config page is open in another tab, click <b>Disconnect</b> there first.</span></li>
+      <li><span>Click <b>Restart into update mode</b>. The first time, Chrome asks which serial port is the Keep Alive: choose <b>Eplop Keep Alive</b>.</span></li>
+      <li><span>A device list opens. When the Keep Alive appears in it, as an <i>unknown device from QinHeng Electronics</i> (the maker of its chip), pick it and click <b>Connect</b>.</span></li>
+      <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
     </ol>
+    <p id="kaFound" class="hint" hidden></p>
     <div class="actions">
-      <button id="btnConnect" class="btn primary" type="button">Install firmware</button>
+      <button id="btnRestart" class="btn primary" type="button">Restart into update mode</button>
       <button id="btnDemo" class="btn" type="button">Try demo</button>
     </div>
-    <p class="hint">Works in Chrome, Edge or Opera on a desktop computer. Your saved presets are normally kept.</p>
+    <p class="hint">Works in Chrome, Edge or Opera on a desktop computer. Your saved presets and settings are kept.</p>
   </section>
+
+  <details id="viaBoot" class="advanced">
+    <summary>First install, or a Keep Alive that won't start</summary>
+    <div class="adv-body">
+      <ol class="steps">
+        <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
+        <li><span>Click <b>Connect</b>. A device list opens; it's empty for now.</span></li>
+        <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive in. Keep holding for a second, then let go.</span></li>
+        <li><span>Straight away, pick the <i>unknown device from QinHeng Electronics</i> and click <b>Connect</b>. It only waits a few seconds; if it vanishes from the list, unplug it and try again.</span></li>
+        <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
+      </ol>
+      <div class="actions">
+        <button id="btnConnect" class="btn" type="button">Connect</button>
+      </div>
+    </div>
+  </details>
 
   <section id="device" class="flashcard" aria-labelledby="devTitle" hidden>
     <div class="flash-head">
@@ -79,11 +95,12 @@
     <dl id="chipInfo" class="kv"></dl>
     <p id="protNote" class="notice warn" hidden>
       <strong>This chip's flash is locked (read-protected).</strong>
-      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive
-      and click Install firmware again.
+      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive,
+      then use <b>First install</b> below to connect again.
     </p>
     <div class="actions">
       <button id="btnFlash" class="btn primary" type="button">Install firmware</button>
+      <button id="btnUnlock" class="btn danger" type="button" hidden>Unlock chip</button>
     </div>
     <div id="progress" class="progress" hidden>
       <div class="progress-label"><span id="stage">Preparing…</span><span id="pct">0%</span></div>
@@ -98,7 +115,7 @@
     <div class="adv-body help">
       <div class="adv-item col">
         <h3>The device list is empty, or it appears and vanishes</h3>
-        <p>The Keep Alive only shows up while it's in update mode, and it leaves update mode after a few seconds if nothing talks to it. Open the list first (click <b>Install firmware</b>), then hold BOOT <em>before</em> plugging it in and keep holding for a second, and pick it as soon as it appears. If it doesn't appear at all, try another cable: some USB cables only carry power.</p>
+        <p>The Keep Alive only shows up while it's in update mode, and it leaves update mode after a few seconds if nothing talks to it, so pick it as soon as it appears. If <b>Restart into update mode</b> can't reach it, use <b>First install</b> with the BOOT button instead. If it doesn't appear at all, try another cable: some USB cables only carry power.</p>
       </div>
       <div class="adv-item col">
         <h3>Windows: “couldn't open the device”</h3>

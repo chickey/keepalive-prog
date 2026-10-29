@@ -116,9 +116,9 @@
         <div class="adv-item">
           <div>
             <h3>Firmware update</h3>
-            <p>Restarts the Keep Alive into its USB bootloader so new firmware can be loaded with the <a href="flash.html">firmware flasher</a>. It disconnects from this page.</p>
+            <p>Opens the firmware page, which restarts the Keep Alive into update mode and installs the latest firmware. Your presets and settings are kept.</p>
           </div>
-          <button id="btnBoot" class="btn" type="button">Enter update mode</button>
+          <a class="btn" href="flash.html">Update firmware</a>
         </div>
         <div class="adv-item col">
           <h3>Communication log</h3>
@@ -128,10 +128,6 @@
     </details>
   </section>
 
-  <section id="bootDone" class="notice" hidden>
-    <strong>The Keep Alive is now in update mode.</strong>
-    Install the new firmware with the <a href="flash.html">firmware flasher</a>, then unplug and reconnect it.
-  </section>
 </main>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

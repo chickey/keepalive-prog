@@ -5,12 +5,12 @@ import { initTheme } from './theme.js';
 const $ = (id) => document.getElementById(id);
 const el = {
   connState: $('connState'), btnConnect: $('btnConnect'), btnDemo: $('btnDemo'), btnDisconnect: $('btnDisconnect'),
-  unsupported: $('unsupported'), intro: $('intro'), device: $('device'), bootDone: $('bootDone'),
+  unsupported: $('unsupported'), intro: $('intro'), device: $('device'),
   devInfo: $('devInfo'), dirty: $('dirty'), btnSave: $('btnSave'), btnDefaults: $('btnDefaults'),
   fault: $('fault'), btnRun: $('btnRun'),
   rMa: $('rMa'), rSet: $('rSet'), rVbus: $('rVbus'), rState: $('rState'),
   chart: $('chart'), testForm: $('testForm'), testMa: $('testMa'), testS: $('testS'),
-  presets: $('presets'), lightOpts: $('lightOpts'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), btnBoot: $('btnBoot'), log: $('log'), toast: $('toast'),
+  presets: $('presets'), lightOpts: $('lightOpts'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), log: $('log'), toast: $('toast'),
 };
 
 const STATE_TEXT = { ON: 'Drawing', OFF: 'Between pulses', IDLE: 'Paused', FAULT: 'Fault' };
@@ -27,7 +27,6 @@ let pulses = [];       // [{on, off, set, ma}] in device ms; off/ma null while o
 let live = { ma: 0, state: 'IDLE' };
 let clock = { dev: 0, at: 0 }; // last device time seen and when (performance.now)
 let rafId = 0;
-let bootArmed = null;
 const cards = [];
 
 /* ---------- helpers ---------- */
@@ -106,7 +105,6 @@ async function connect(useDemo) {
     el.lastPulse.textContent = '';
     startChart();
     el.intro.hidden = true;
-    el.bootDone.hidden = true;
     el.device.hidden = false;
     el.btnConnect.hidden = true;
     el.btnDemo.hidden = true;
@@ -124,7 +122,7 @@ function onClosed() {
   cancelAnimationFrame(rafId);
   setConn('off', 'Not connected');
   el.device.hidden = true;
-  el.intro.hidden = !el.bootDone.hidden;
+  el.intro.hidden = false;
   el.btnConnect.hidden = false;
   el.btnDemo.hidden = false;
   el.btnDisconnect.hidden = true;
@@ -438,21 +436,6 @@ async function testPulse(ev) {
   try { await link.cmd(`TEST ma=${ma} ms=${ms}`); } catch (e) { toast(e.message); }
 }
 
-async function enterBoot() {
-  if (!bootArmed || Date.now() - bootArmed > 4000) {
-    bootArmed = Date.now();
-    el.btnBoot.textContent = 'Click again to confirm';
-    el.btnBoot.classList.add('danger');
-    setTimeout(() => { el.btnBoot.textContent = 'Enter update mode'; el.btnBoot.classList.remove('danger'); }, 4000);
-    return;
-  }
-  bootArmed = null;
-  try {
-    await link.cmd('BOOT');
-    el.bootDone.hidden = false;
-  } catch (e) { toast(e.message); }
-}
-
 /* ---------- chart ---------- */
 
 function startChart() {
@@ -552,7 +535,6 @@ function init() {
   for (const r of ledRadios()) r.addEventListener('change', () => setLed(Number(r.value)));
   el.btnRun.addEventListener('click', toggleRun);
   el.testForm.addEventListener('submit', testPulse);
-  el.btnBoot.addEventListener('click', enterBoot);
   initTheme($('btnTheme'));
   window.addEventListener('resize', drawChart);
   window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
