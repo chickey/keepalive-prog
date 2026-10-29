@@ -31,6 +31,11 @@ current preset. Presets disabled on the config page are skipped. With only
 one preset enabled, the LED blinks once instead of the preset number, and a
 short press just blinks without restarting the pulse timing.
 
+Pulse limits (since 1.0.5, enforced by the firmware): a pulse lasts 10 ms to
+30 s, the off time is at least as long as the on time (50% duty at most, so
+there is no continuous load), and a whole cycle is at most an hour. Presets
+saved by older firmware are clamped into these limits at power-up.
+
 ## Layout
 
 | File | Purpose |

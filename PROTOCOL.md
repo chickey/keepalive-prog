@@ -30,7 +30,7 @@ makes bring-up and support easy. The baud rate is ignored by CDC.
 First command the page sends. Identifies the device and protocol version.
 ```
 > HELLO
-< OK KA-PROG fw=1.0.3 proto=1 hw=A uid=1A2B3C4D
+< OK KA-PROG fw=1.0.5 proto=1 hw=A uid=1A2B3C4D
 ```
 The page refuses to configure a device whose `proto` is newer than it understands, and asks the user to reload the page.
 
@@ -38,8 +38,9 @@ The page refuses to configure a device whose `proto` is newer than it understand
 Ranges the firmware accepts, so the page never hard-codes them.
 ```
 > LIMITS
-< OK presets=3 ma_max=325 on_min=10 on_max=600000 off_max=3600000 stream_min=100 stream_max=60000
+< OK presets=3 ma_max=325 on_min=10 on_max=30000 off_max=3599990 period_max=3600000 duty_max=50 stream_min=100 stream_max=60000
 ```
+Since 1.0.5 a preset must also satisfy `off >= on` (at most `duty_max` = 50% on, so there is no continuous load) and `on + off <= period_max` (one hour). `period_max` and `duty_max` are only sent by firmware that enforces them; before 1.0.5 `on_max` was 600000, `off_max` 3600000, and `off=0` meant continuous load.
 `stream_min`/`stream_max` bound the `STREAM` interval. The page must ignore keys it doesn't know, so new limits can be added without bumping `proto`.
 
 ### `GET <n>` / `GET`
@@ -48,7 +49,7 @@ Read preset `n` (1–3). Without `n`, returns all three on one line separated by
 > GET 1
 < OK p=1 ma=50 on=500 off=4500 en=1
 ```
-`off=0` means continuous load (on-time ignored). `ma=0` means no load.
+`ma=0` means no load.
 `en=0` means the preset is disabled: the button skips it and `SELECT` refuses
 it. Firmware before 1.0.1 doesn't send `en`; treat a missing `en` as `1`.
 
@@ -58,6 +59,9 @@ Change preset `n` in RAM. Takes effect immediately if `n` is the active preset. 
 > SET 1 ma=120 on=250
 < OK p=1 ma=120 on=250 off=4500 en=1
 ```
+The resulting preset is checked as a whole, so a `SET` that would break a limit is refused and nothing changes (`ERR 3 off must be at least on (max 50% duty)`, `ERR 3 on + off must be at most 1 hour`, `ERR 3 on must be 10-30000 ms`).
+Presets saved by older firmware are pulled into these limits at power-up.
+
 The active preset can't be disabled (`ERR 5 select another preset first`), so
 at least one preset is always enabled.
 

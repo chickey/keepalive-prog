@@ -48,10 +48,12 @@
   </section>
 
   <section class="fwcard" aria-labelledby="fwTitle">
-    <div>
-      <h2 id="fwTitle">Firmware</h2>
-      <p id="fwInfo" class="fwinfo">Loading…</p>
-    </div>
+    <h2 id="fwTitle">Firmware</h2>
+    <dl class="kv kv2">
+      <div><dt>On your Keep Alive</dt><dd id="fwDevice" class="fwver">Not checked yet</dd><dd id="fwDeviceSub" class="fwsub">Plug it in and reload, or click Restart into update mode</dd></div>
+      <div><dt>Available to install</dt><dd id="fwAvail" class="fwver">Loading…</dd><dd id="fwAvailSub" class="fwsub"></dd></div>
+    </dl>
+    <p id="fwStatus" class="fwstatus" hidden></p>
     <p id="fwNote" class="hint" hidden></p>
   </section>
 
@@ -63,7 +65,6 @@
       <li><span>A device list opens. When the Keep Alive appears in it, as an <i>unknown device from QinHeng Electronics</i> (the maker of its chip), pick it and click <b>Connect</b>.</span></li>
       <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
     </ol>
-    <p id="kaFound" class="hint" hidden></p>
     <div class="actions">
       <button id="btnRestart" class="btn primary" type="button">Restart into update mode</button>
       <button id="btnDemo" class="btn" type="button">Try demo</button>

@@ -130,7 +130,7 @@ static void cmd_set(char **tok, int nt)
 			if (v > MA_MAX) { error(E_RANGE, "ma out of range"); return; }
 			p.ma = (uint16_t)v;
 		} else if (ieq(tok[i], "on")) {
-			if (v < ON_MIN_MS || v > ON_MAX_MS) { error(E_RANGE, "on out of range"); return; }
+			if (v > ON_MAX_MS) { error(E_RANGE, "on must be 10-30000 ms"); return; }
 			p.on = v;
 		} else if (ieq(tok[i], "off")) {
 			if (v > OFF_MAX_MS) { error(E_RANGE, "off out of range"); return; }
@@ -140,6 +140,9 @@ static void cmd_set(char **tok, int nt)
 			p.en = (uint8_t)v;
 		} else { error(E_ARG, "unknown key"); return; }
 	}
+	// Checked as a whole, since the limits tie on and off together.
+	const char *why = preset_check(&p);
+	if (why) { error(E_RANGE, why); return; }
 	// The active preset always stays enabled, so at least one always is.
 	if (!p.en && n == app.active) { error(E_STATE, "select another preset first"); return; }
 	app.presets[n - 1] = p;
@@ -192,9 +195,9 @@ void proto_line(char *line)
 		reply("KA-PROG fw=%s proto=%d hw=%s uid=%08lX", FW_VERSION, PROTO_VERSION, HW_REV,
 		      (unsigned long)hal_uid());
 	} else if (ieq(c, "LIMITS")) {
-		reply("presets=%d ma_max=%d on_min=%d on_max=%lu off_max=%lu stream_min=%d stream_max=%lu",
+		reply("presets=%d ma_max=%d on_min=%d on_max=%lu off_max=%lu period_max=%lu duty_max=%d stream_min=%d stream_max=%lu",
 		      NPRESETS, MA_MAX, ON_MIN_MS, (unsigned long)ON_MAX_MS, (unsigned long)OFF_MAX_MS,
-		      STREAM_MIN_MS, (unsigned long)STREAM_MAX_MS);
+		      (unsigned long)PERIOD_MAX_MS, DUTY_MAX_PCT, STREAM_MIN_MS, (unsigned long)STREAM_MAX_MS);
 	} else if (ieq(c, "GET")) {
 		if (nt < 2) {
 			char all[160];

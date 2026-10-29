@@ -10,7 +10,7 @@ const el = {
   fault: $('fault'), btnRun: $('btnRun'),
   rMa: $('rMa'), rSet: $('rSet'), rVbus: $('rVbus'), rState: $('rState'),
   chart: $('chart'), testForm: $('testForm'), testMa: $('testMa'), testS: $('testS'),
-  presets: $('presets'), lightOpts: $('lightOpts'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), log: $('log'), toast: $('toast'),
+  presets: $('presets'), lightOpts: $('lightOpts'), limitsHint: $('limitsHint'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), log: $('log'), toast: $('toast'),
 };
 
 const STATE_TEXT = { ON: 'Drawing', OFF: 'Between pulses', IDLE: 'Paused', FAULT: 'Fault' };
@@ -60,6 +60,7 @@ function setDirty(v) {
 const sec = (ms) => +(ms / 1000).toFixed(2);
 const toMs = (s) => Math.round(Number(s) * 1000);
 function fmtSec(ms) {
+  if (ms >= 3600000) { const h = ms / 3600000; return `${+h.toFixed(1)} hour${h === 1 ? '' : 's'}`; }
   if (ms >= 60000) { const m = ms / 60000; return `${+m.toFixed(1)} min`; }
   return `${+(ms / 1000).toFixed(2)} s`;
 }
@@ -98,6 +99,7 @@ async function connect(useDemo) {
 
     el.devInfo.textContent = `${demo ? 'Demo device' : 'Keep Alive'} · firmware ${hello.fw} · hw ${hello.hw} · id ${hello.uid}`;
     buildCards();
+    renderLimitsHint();
     renderAll();
     setDirty(false);
     pulses = [];
@@ -204,6 +206,17 @@ function applyEdge(e) {
 
 /* ---------- presets ---------- */
 
+// Firmware 1.0.5+ caps the duty cycle (and so has no continuous load).
+const capped = () => limits?.duty_max !== undefined;
+
+function renderLimitsHint() {
+  el.limitsHint.hidden = !capped();
+  if (capped()) {
+    el.limitsHint.textContent = `To protect the Keep Alive, a pulse lasts at most ${fmtSec(limits.on_max)}, ` +
+      `the off time is at least as long as the on time, and a whole cycle is at most ${fmtSec(limits.period_max)}.`;
+  }
+}
+
 // Firmware before en= has every preset enabled.
 const toPreset = (p) => ({ ma: p.ma, on: p.on, off: p.off, en: p.en ?? 1 });
 
@@ -238,6 +251,7 @@ function buildCards() {
     c.on.addEventListener('input', () => edited(n));
     c.off.addEventListener('input', () => edited(n));
     c.cont.addEventListener('change', () => { c.off.disabled = c.cont.checked; edited(n); });
+    if (capped()) c.cont.closest('label').hidden = true;   // 50% duty cap: no continuous load
     c.use.addEventListener('click', () => select(n));
     c.en.addEventListener('change', () => setEnabled(n, c.en.checked));
     cards.push(c);
@@ -248,11 +262,14 @@ function buildCards() {
 function readCard(n) {
   const c = cards[n - 1];
   const ma = Number(c.ma.value), on = toMs(c.on.value);
-  const off = c.cont.checked ? 0 : toMs(c.off.value);
+  const off = c.cont.checked && !capped() ? 0 : toMs(c.off.value);
   const errs = [];
   if (!Number.isInteger(ma) || ma < 0 || ma > limits.ma_max) errs.push(['ma', `Current must be 0–${limits.ma_max} mA.`]);
   if (!(on >= limits.on_min && on <= limits.on_max)) errs.push(['on', `On time must be ${fmtSec(limits.on_min)} to ${fmtSec(limits.on_max)}.`]);
-  if (!c.cont.checked && !(off >= limits.on_min && off <= limits.off_max)) errs.push(['off', `Off time must be ${fmtSec(limits.on_min)} to ${fmtSec(limits.off_max)}.`]);
+  if (capped()) {
+    if (!(off >= on)) errs.push(['off', 'Off time must be at least as long as the on time.']);
+    else if (on + off > limits.period_max) errs.push(['off', `On and off together can be at most ${fmtSec(limits.period_max)}.`]);
+  } else if (!c.cont.checked && !(off >= limits.on_min && off <= limits.off_max)) errs.push(['off', `Off time must be ${fmtSec(limits.on_min)} to ${fmtSec(limits.off_max)}.`]);
   return { val: { ma, on, off }, errs };
 }
 

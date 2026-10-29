@@ -1,7 +1,7 @@
 // Simulated Keep Alive implementing PROTOCOL.md, for the "Try demo" button.
 // Behaves like a board connected to a PC: pulsing starts paused.
 
-const LIMITS = { presets: 3, ma_max: 325, on_min: 10, on_max: 600000, off_max: 3600000, stream_min: 100, stream_max: 60000 };
+const LIMITS = { presets: 3, ma_max: 325, on_min: 10, on_max: 30000, off_max: 3599990, period_max: 3600000, duty_max: 50, stream_min: 100, stream_max: 60000 };
 const DEFAULTS = [
   { ma: 50, on: 500, off: 4500, en: 1 },
   { ma: 125, on: 500, off: 4500, en: 1 },
@@ -148,9 +148,9 @@ export class MockTransport {
 
     switch (cmd.toUpperCase()) {
       case 'HELLO':
-        return this._send('OK KA-PROG fw=1.0.3-demo proto=1 hw=A uid=DEMO0001');
+        return this._send('OK KA-PROG fw=1.0.5-demo proto=1 hw=A uid=DEMO0001');
       case 'LIMITS':
-        return this._send(`OK presets=${LIMITS.presets} ma_max=${LIMITS.ma_max} on_min=${LIMITS.on_min} on_max=${LIMITS.on_max} off_max=${LIMITS.off_max} stream_min=${LIMITS.stream_min} stream_max=${LIMITS.stream_max}`);
+        return this._send('OK ' + Object.entries(LIMITS).map(([k, v]) => `${k}=${v}`).join(' '));
       case 'GET':
         if (n === null) return this._send('OK ' + [1, 2, 3].map((i) => this._fmt(i)).join(' | '));
         if (badPreset()) return this._send('ERR 3 preset must be 1-3');
@@ -161,6 +161,9 @@ export class MockTransport {
           if (!['ma', 'on', 'off', 'en'].includes(k)) return this._send(`ERR 2 unknown key ${k}`);
           if (k === 'en' ? v !== 0 && v !== 1 : !this._check(k, v)) return this._send(`ERR 3 ${k} out of range`);
         }
+        const p = { ...this.presets[n - 1], ...args };
+        if (p.off < p.on) return this._send('ERR 3 off must be at least on (max 50% duty)');
+        if (p.on + p.off > LIMITS.period_max) return this._send('ERR 3 on + off must be at most 1 hour');
         if (args.en === 0 && n === this.active) return this._send('ERR 5 select another preset first');
         Object.assign(this.presets[n - 1], args);
         if (n === this.active) this._restart();
