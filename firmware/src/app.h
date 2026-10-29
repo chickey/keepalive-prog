@@ -11,6 +11,7 @@ typedef struct {
 	uint16_t ma;    // 0 = preset disabled
 	uint32_t on;    // ms
 	uint32_t off;   // ms, 0 = continuous
+	uint8_t  en;    // 0 = disabled: skipped by the button, can't be selected
 } preset_t;
 
 typedef struct {
@@ -34,6 +35,8 @@ typedef struct {
 
 // Factory presets
 void app_defaults(void);
+// Next enabled preset after n (wrapping); n itself if it is the only one.
+uint8_t app_next_enabled(uint8_t n);
 
 // ---- Scheduler (sched.c) ----
 void     sched_restart(uint32_t now);                        // schedule changed: end pulse, restart cycle

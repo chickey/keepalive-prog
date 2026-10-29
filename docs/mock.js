@@ -3,9 +3,9 @@
 
 const LIMITS = { presets: 3, ma_max: 325, on_min: 10, on_max: 600000, off_max: 3600000, stream_min: 100, stream_max: 60000 };
 const DEFAULTS = [
-  { ma: 50, on: 500, off: 4500 },
-  { ma: 125, on: 500, off: 4500 },
-  { ma: 200, on: 500, off: 4500 },
+  { ma: 50, on: 500, off: 4500, en: 1 },
+  { ma: 125, on: 500, off: 4500, en: 1 },
+  { ma: 200, on: 500, off: 4500, en: 1 },
 ];
 
 export class MockTransport {
@@ -51,7 +51,7 @@ export class MockTransport {
 
   _send(l) { if (!this.closed) this.onLine?.(l); }
   _now() { return Math.round(performance.now() - this.t0); }
-  _fmt(n) { const p = this.presets[n - 1]; return `p=${n} ma=${p.ma} on=${p.on} off=${p.off}`; }
+  _fmt(n) { const p = this.presets[n - 1]; return `p=${n} ma=${p.ma} on=${p.on} off=${p.off} en=${p.en}`; }
 
   // Pulse edges are generated from the schedule at their exact device time,
   // even if the browser delays this timer (e.g. background tab), like a
@@ -147,7 +147,7 @@ export class MockTransport {
 
     switch (cmd.toUpperCase()) {
       case 'HELLO':
-        return this._send('OK KA-PROG fw=1.0.0-demo proto=1 hw=A uid=DEMO0001');
+        return this._send('OK KA-PROG fw=1.0.1-demo proto=1 hw=A uid=DEMO0001');
       case 'LIMITS':
         return this._send(`OK presets=${LIMITS.presets} ma_max=${LIMITS.ma_max} on_min=${LIMITS.on_min} on_max=${LIMITS.on_max} off_max=${LIMITS.off_max} stream_min=${LIMITS.stream_min} stream_max=${LIMITS.stream_max}`);
       case 'GET':
@@ -157,15 +157,17 @@ export class MockTransport {
       case 'SET': {
         if (badPreset()) return this._send('ERR 3 preset must be 1-3');
         for (const [k, v] of Object.entries(args)) {
-          if (!['ma', 'on', 'off'].includes(k)) return this._send(`ERR 2 unknown key ${k}`);
-          if (!this._check(k, v)) return this._send(`ERR 3 ${k} out of range`);
+          if (!['ma', 'on', 'off', 'en'].includes(k)) return this._send(`ERR 2 unknown key ${k}`);
+          if (k === 'en' ? v !== 0 && v !== 1 : !this._check(k, v)) return this._send(`ERR 3 ${k} out of range`);
         }
+        if (args.en === 0 && n === this.active) return this._send('ERR 5 select another preset first');
         Object.assign(this.presets[n - 1], args);
         if (n === this.active) this._restart();
         return this._send('OK ' + this._fmt(n));
       }
       case 'SELECT':
         if (badPreset()) return this._send('ERR 3 preset must be 1-3');
+        if (!this.presets[n - 1].en) return this._send('ERR 5 preset is disabled');
         this.active = n; this._restart();
         return this._send(`OK active=${n}`);
       case 'SAVE':

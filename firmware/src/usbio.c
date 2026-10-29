@@ -7,7 +7,10 @@
 
 #define RX_LINE_MAX  130
 #define TX_SIZE      1024
-#define ENUM_WAIT_MS 1500
+// How long to wait for a host after attaching. Long, because macOS on
+// laptops asks the user to allow a new accessory before it enumerates it.
+// The preset pulses meanwhile, so a power bank is kept awake either way.
+#define ENUM_WAIT_MS 60000u
 
 static char     rx_line[RX_LINE_MAX];
 static uint16_t rx_len;
@@ -18,6 +21,8 @@ static volatile uint16_t tx_head, tx_tail;
 
 static volatile uint8_t dtr;
 static uint8_t  attached;
+static uint8_t  waiting;     // attached, no host yet
+static uint32_t wait_t0;
 
 // CDC line coding (ignored, but hosts expect to read it back).
 static uint8_t line_coding[7] = { 0x00, 0xC2, 0x01, 0x00, 0x00, 0x00, 0x08 }; // 115200 8N1
@@ -125,9 +130,10 @@ static void detach(void)
 // 1. With weak pull-downs on D+/D-, anything already pulling a line high
 //    (Apple-style divider, a device on the output socket) means not a bare
 //    host port: stay off the bus.
-// 2. Otherwise connect our D+ pull-up and see whether a host enumerates us
-//    within ENUM_WAIT_MS. A power bank never will; then disconnect again.
-uint8_t usbio_detect_and_attach(uint32_t (*millis)(void))
+// 2. Otherwise connect our D+ pull-up and let usbio_host_poll() watch for a
+//    host to enumerate us within ENUM_WAIT_MS. A power bank never will; then
+//    disconnect again.
+void usbio_detect_and_attach(uint32_t now)
 {
 	RCC->APB2PCENR |= RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO;
 	GPIOC->OUTDR &= ~((1u << 16) | (1u << 17));   // pull direction: down
@@ -137,14 +143,25 @@ uint8_t usbio_detect_and_attach(uint32_t (*millis)(void))
 	uint8_t high = (GPIOC->INDR & ((1u << 16) | (1u << 17))) != 0;
 	pc_mode(16, GPIO_CFGLR_IN_FLOAT);
 	pc_mode(17, GPIO_CFGLR_IN_FLOAT);
-	if (high) return 0;
+	if (high) return;
 
 	USBFSSetup();
 	attached = 1;
-	uint32_t t0 = millis();
-	while (millis() - t0 < ENUM_WAIT_MS) {
-		if (USBFSCTX.USBFS_DevEnumStatus) return 1;
+	waiting = 1;
+	wait_t0 = now;
+}
+
+int usbio_host_poll(uint32_t now)
+{
+	if (!waiting) return attached ? USB_HOST : USB_NONE;
+	if (USBFSCTX.USBFS_DevEnumStatus) {
+		waiting = 0;
+		return USB_HOST;
 	}
-	detach();
-	return 0;
+	if (now - wait_t0 >= ENUM_WAIT_MS) {
+		waiting = 0;
+		detach();
+		return USB_NONE;
+	}
+	return USB_WAITING;
 }

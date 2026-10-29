@@ -6,7 +6,8 @@
 #include "store.h"
 
 #define STORE_ADDR   0x0800F700u   // last page of the 62 KB code flash
-#define STORE_MAGIC  0x4B415031u   // "KAP1"
+#define STORE_MAGIC  0x4B415032u   // "KAP2": KAP1 plus the enabled mask
+#define STORE_MAGIC1 0x4B415031u   // "KAP1": all presets enabled
 #define PAGE_SIZE    256
 
 typedef struct {
@@ -14,6 +15,8 @@ typedef struct {
 	uint32_t active;
 	struct { uint32_t ma, on, off; } p[NPRESETS];
 	uint32_t crc;
+	uint32_t enabled;   // bit i = preset i+1 enabled (KAP2 only)
+	uint32_t crc2;      // over everything above (KAP2 only)
 } record_t;
 
 _Static_assert(sizeof(record_t) <= PAGE_SIZE, "record too big");
@@ -26,28 +29,37 @@ static uint32_t fnv1a(const void *d, int n)
 	return h;
 }
 
-static int valid(const record_t *r)
+#define ALL_ENABLED ((1u << NPRESETS) - 1)
+
+// Returns the enabled mask of a valid record, 0 if it isn't valid.
+static uint32_t valid(const record_t *r)
 {
-	if (r->magic != STORE_MAGIC) return 0;
+	uint32_t en;
+	if (r->magic == STORE_MAGIC1) en = ALL_ENABLED;
+	else if (r->magic == STORE_MAGIC && r->crc2 == fnv1a(r, offsetof(record_t, crc2))) en = r->enabled;
+	else return 0;
 	if (r->crc != fnv1a(r, offsetof(record_t, crc))) return 0;
 	if (r->active < 1 || r->active > NPRESETS) return 0;
+	if (en & ~ALL_ENABLED || !(en & (1u << (r->active - 1)))) return 0;
 	for (int i = 0; i < NPRESETS; i++) {
 		if (r->p[i].ma > MA_MAX) return 0;
 		if (r->p[i].on < ON_MIN_MS || r->p[i].on > ON_MAX_MS) return 0;
 		if (r->p[i].off > OFF_MAX_MS) return 0;
 	}
-	return 1;
+	return en;
 }
 
 void store_load(void)
 {
 	const record_t *r = (const record_t *)STORE_ADDR;
-	if (valid(r)) {
+	uint32_t en = valid(r);
+	if (en) {
 		app.active = (uint8_t)r->active;
 		for (int i = 0; i < NPRESETS; i++) {
 			app.presets[i].ma = (uint16_t)r->p[i].ma;
 			app.presets[i].on = r->p[i].on;
 			app.presets[i].off = r->p[i].off;
+			app.presets[i].en = (uint8_t)((en >> i) & 1);
 		}
 	} else {
 		app_defaults();
@@ -76,12 +88,15 @@ int store_save(void)
 	memset(page, 0xFF, sizeof page);
 	r->magic = STORE_MAGIC;
 	r->active = app.active;
+	r->enabled = 0;
 	for (int i = 0; i < NPRESETS; i++) {
 		r->p[i].ma = app.presets[i].ma;
 		r->p[i].on = app.presets[i].on;
 		r->p[i].off = app.presets[i].off;
+		if (app.presets[i].en) r->enabled |= 1u << i;
 	}
 	r->crc = fnv1a(r, offsetof(record_t, crc));
+	r->crc2 = fnv1a(r, offsetof(record_t, crc2));
 
 	// Skip the write if nothing changed (saves flash wear on repeated SAVE).
 	if (memcmp((const void *)STORE_ADDR, page, sizeof(record_t)) == 0) return 0;

@@ -38,7 +38,7 @@ Never configure PC10/PC11 as outputs (bonded internally to the USB pins).
 
 ## Buttons and boot
 
-- PRESET (PB1): short press = next preset, LED blinks 1/2/3; selection saved to flash. Long press (≥ 1.5 s) = blink the current preset number without changing it.
+- PRESET (PB1): short press = next enabled preset (disabled ones are skipped), LED blinks 1/2/3; selection saved to flash. Long press (≥ 1.5 s) = blink the current preset number without changing it.
 - BOOT button: pulls D+ to +3V3 via 4.7 kΩ. Hold while plugging in → WCH USB ISP bootloader (4348:55E0), flash with `wchisp`.
 - Firmware should also offer a command to jump to the bootloader.
 

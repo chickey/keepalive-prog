@@ -18,7 +18,8 @@ const STATE_TEXT = { ON: 'Drawing', OFF: 'Between pulses', IDLE: 'Paused', FAULT
 let link = null;
 let demo = false;
 let limits = null;
-let presets = [];      // [{ma,on,off}] as last confirmed by the device
+let presets = [];      // [{ma,on,off,en}] as last confirmed by the device
+let hasEnable = false; // firmware supports en= (enable/disable presets)
 let active = 1;
 let running = 0;
 let dirty = false;
@@ -87,7 +88,8 @@ async function connect(useDemo) {
     presets = [];
     for (let n = 1; n <= limits.presets; n++) {
       const p = parseKV(await link.cmd(`GET ${n}`));
-      presets.push({ ma: p.ma, on: p.on, off: p.off });
+      if (n === 1) hasEnable = 'en' in p;
+      presets.push(toPreset(p));
     }
     const st = parseKV(await link.cmd('STATUS'));
     active = st.active;
@@ -203,6 +205,9 @@ function applyEdge(e) {
 
 /* ---------- presets ---------- */
 
+// Firmware before en= has every preset enabled.
+const toPreset = (p) => ({ ma: p.ma, on: p.on, off: p.off, en: p.en ?? 1 });
+
 function buildCards() {
   el.presets.textContent = '';
   cards.length = 0;
@@ -214,11 +219,13 @@ function buildCards() {
       range: node.querySelector('.ma-range'), ma: node.querySelector('.ma'),
       on: node.querySelector('.on'), off: node.querySelector('.off'), cont: node.querySelector('.cont'),
       summary: node.querySelector('.summary'), err: node.querySelector('.ferr'),
+      en: node.querySelector('.en'), enWrap: node.querySelector('.en-wrap'),
     };
     const n = i + 1;
     c.pn.textContent = n;
     const id = (k) => `p${n}-${k}`;
-    for (const [k, inp] of [['ma', c.ma], ['on', c.on], ['off', c.off], ['cont', c.cont], ['range', c.range]]) inp.id = id(k);
+    for (const [k, inp] of [['ma', c.ma], ['on', c.on], ['off', c.off], ['cont', c.cont], ['range', c.range], ['en', c.en]]) inp.id = id(k);
+    c.enWrap.hidden = !hasEnable;
     const lbls = node.querySelectorAll('.flabel');
     lbls[0].htmlFor = id('ma'); lbls[1].htmlFor = id('on'); lbls[2].htmlFor = id('off');
     c.range.setAttribute('aria-label', `Preset ${n} pulse current`);
@@ -233,6 +240,7 @@ function buildCards() {
     c.off.addEventListener('input', () => edited(n));
     c.cont.addEventListener('change', () => { c.off.disabled = c.cont.checked; edited(n); });
     c.use.addEventListener('click', () => select(n));
+    c.en.addEventListener('change', () => setEnabled(n, c.en.checked));
     cards.push(c);
     el.presets.append(node);
   }
@@ -251,17 +259,21 @@ function readCard(n) {
 
 function renderCard(n, p = presets[n - 1]) {
   const c = cards[n - 1];
+  c.root.classList.toggle('disabled', !p.en);
+  c.en.checked = !!p.en;
+  for (const inp of [c.ma, c.range, c.on, c.cont]) inp.disabled = !p.en;
   c.ma.value = p.ma; c.range.value = p.ma;
   c.on.value = sec(p.on);
   c.cont.checked = p.off === 0;
-  c.off.disabled = p.off === 0;
+  c.off.disabled = !p.en || p.off === 0;
   c.off.value = p.off === 0 ? '' : sec(p.off);
   renderSummary(n, p);
 }
 
 function renderSummary(n, p) {
   const c = cards[n - 1];
-  if (p.ma === 0) { c.summary.innerHTML = 'Disabled: <b>no load</b>'; return; }
+  if (p.en === 0) { c.summary.innerHTML = '<b>Disabled</b> · the button skips this preset'; return; }
+  if (p.ma === 0) { c.summary.innerHTML = 'No load (<b>0 mA</b>)'; return; }
   if (p.off === 0) { c.summary.innerHTML = `Continuous <b>${p.ma} mA</b>`; return; }
   const period = p.on + p.off;
   const duty = (p.on / period) * 100;
@@ -274,7 +286,10 @@ function renderActive() {
     const on = i + 1 === active;
     c.root.classList.toggle('active', on);
     c.badge.hidden = !on;
-    c.use.hidden = on;
+    c.use.hidden = on || !presets[i]?.en;
+    // The active preset can't be disabled, so at least one always stays enabled.
+    c.en.disabled = on;
+    c.enWrap.title = on ? 'This is the active preset. Use another preset before disabling this one.' : '';
   });
   const p = presets[active - 1];
   if (p && p.ma > 0) el.testMa.value = p.ma;
@@ -301,7 +316,7 @@ function edited(n) {
   c.err.hidden = !errs.length;
   c.err.textContent = errs.map(([, m]) => m).join(' ');
   if (errs.length) return;
-  renderSummary(n, val);
+  renderSummary(n, { ...val, en: presets[n - 1].en });
   clearTimeout(pendingSet[n]);
   pendingSet[n] = setTimeout(() => pushSet(n, val), 300);
 }
@@ -309,7 +324,7 @@ function edited(n) {
 async function pushSet(n, val) {
   try {
     const r = parseKV(await link.cmd(`SET ${n} ma=${val.ma} on=${val.on} off=${val.off}`));
-    presets[n - 1] = { ma: r.ma, on: r.on, off: r.off };
+    presets[n - 1] = toPreset(r);
     setDirty(true);
     if (n === active && r.ma > 0) el.testMa.value = r.ma;
   } catch (e) {
@@ -317,6 +332,21 @@ async function pushSet(n, val) {
     c.err.hidden = false;
     c.err.textContent = e instanceof DeviceError ? `The device rejected this: ${e.message}` : e.message;
   }
+}
+
+async function setEnabled(n, on) {
+  const c = cards[n - 1];
+  try {
+    const r = parseKV(await link.cmd(`SET ${n} en=${on ? 1 : 0}`));
+    presets[n - 1] = toPreset(r);
+    c.err.hidden = true;
+    setDirty(true);
+  } catch (e) {
+    c.err.hidden = false;
+    c.err.textContent = e instanceof DeviceError ? `The device rejected this: ${e.message}` : e.message;
+  }
+  renderCard(n);
+  renderActive();
 }
 
 async function select(n) {
@@ -352,7 +382,7 @@ async function restoreDefaults() {
     await link.cmd('DEFAULTS');
     for (let n = 1; n <= cards.length; n++) {
       const p = parseKV(await link.cmd(`GET ${n}`));
-      presets[n - 1] = { ma: p.ma, on: p.on, off: p.off };
+      presets[n - 1] = toPreset(p);
       renderCard(n);
       cards[n - 1].err.hidden = true;
     }
