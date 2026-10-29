@@ -165,7 +165,7 @@ int main(void)
 
 		int ev = ui_poll(now);
 		if (ev == UI_SHORT) {
-			app.active = (uint8_t)(app.active % NPRESETS + 1);
+			app.active = app_next_enabled(app.active);
 			sched_restart(now);
 			store_save();
 			ui_blink(app.active);

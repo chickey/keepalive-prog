@@ -30,7 +30,7 @@ makes bring-up and support easy. The baud rate is ignored by CDC.
 First command the page sends. Identifies the device and protocol version.
 ```
 > HELLO
-< OK KA-PROG fw=1.0.0 proto=1 hw=A uid=1A2B3C4D
+< OK KA-PROG fw=1.0.1 proto=1 hw=A uid=1A2B3C4D
 ```
 The page refuses to configure a device whose `proto` is newer than it understands, and asks the user to reload the page.
 
@@ -46,19 +46,24 @@ Ranges the firmware accepts, so the page never hard-codes them.
 Read preset `n` (1–3). Without `n`, returns all three on one line separated by ` | `.
 ```
 > GET 1
-< OK p=1 ma=50 on=500 off=4500
+< OK p=1 ma=50 on=500 off=4500 en=1
 ```
-`off=0` means continuous load (on-time ignored). `ma=0` means preset disabled (no load).
+`off=0` means continuous load (on-time ignored). `ma=0` means no load.
+`en=0` means the preset is disabled: the button skips it and `SELECT` refuses
+it. Firmware before 1.0.1 doesn't send `en`; treat a missing `en` as `1`.
 
-### `SET <n> ma=<mA> on=<ms> off=<ms>`
+### `SET <n> ma=<mA> on=<ms> off=<ms> en=<0|1>`
 Change preset `n` in RAM. Takes effect immediately if `n` is the active preset. Omitted keys keep their value. Not persistent until `SAVE`.
 ```
 > SET 1 ma=120 on=250
-< OK p=1 ma=120 on=250 off=4500
+< OK p=1 ma=120 on=250 off=4500 en=1
 ```
+The active preset can't be disabled (`ERR 5 select another preset first`), so
+at least one preset is always enabled.
 
 ### `SELECT <n>`
-Make preset `n` active (same as the button). Persisted by `SAVE`.
+Make preset `n` active (same as the button). Persisted by `SAVE`. A disabled
+preset can't be selected (`ERR 5 preset is disabled`).
 ```
 > SELECT 2
 < OK active=2
@@ -72,7 +77,7 @@ Write all presets and the active selection to flash. The page calls this only on
 ```
 
 ### `DEFAULTS`
-Restore factory presets in RAM (still needs `SAVE`).
+Restore factory presets in RAM, all enabled (still needs `SAVE`).
 
 ### `STATUS`
 ```
@@ -130,7 +135,7 @@ Reply, then reboot into the WCH USB bootloader for a firmware update.
 | `!S ...` | Periodic status (see `STREAM`) |
 | `!E on t=<ms> set=<mA>` | Pulse started (while streaming). `t` is the exact edge time from the hardware timer |
 | `!E off t=<ms> ma=<mA> dur=<ms>` | Pulse ended. `ma` is the average measured current over the pulse after the first few ms of settling |
-| `!P active=<n>` | Preset changed with the button |
+| `!P active=<n>` | Preset changed with the button (it skips disabled presets) |
 | `!T done ma=<mA>` | `TEST` pulse finished |
 | `!F <reason> vbus=<mV>` | Fault: `OVERVOLT` (> 6 V), `UNDERVOLT` (< 4.2 V), `OVERCURRENT`, `NOREG` (target not reached) |
 | `!F CLEAR` | Fault cleared |

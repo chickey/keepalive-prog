@@ -24,9 +24,10 @@ It runs the active preset from power-up while it waits for a host, so a power
 bank is kept awake during the 60 s; deep sleep only starts once it has given
 up on a host and let go of the data lines.
 
-In both modes the PRESET button steps through presets 1→2→3 (saved
+In both modes the PRESET button steps through the enabled presets 1→2→3 (saved
 immediately, LED blinks the number); a long press (1.5 s) just shows the
-current preset.
+current preset. Presets disabled on the config page are skipped; with
+only one enabled, a short press just shows it.
 
 ## Layout
 

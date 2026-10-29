@@ -60,13 +60,13 @@ int main(void)
 	EXPECT_REPLY("LIMITS", "OK presets=3 ma_max=325 on_min=10 on_max=600000 off_max=3600000 stream_min=100 stream_max=60000");
 
 	// Presets
-	EXPECT_REPLY("GET 1", "OK p=1 ma=50 on=500 off=4500");
-	EXPECT_REPLY("GET 3", "OK p=3 ma=200 on=500 off=4500");
-	EXPECT_REPLY("GET", "OK p=1 ma=50 on=500 off=4500 | p=2 ma=125 on=500 off=4500 | p=3 ma=200 on=500 off=4500");
+	EXPECT_REPLY("GET 1", "OK p=1 ma=50 on=500 off=4500 en=1");
+	EXPECT_REPLY("GET 3", "OK p=3 ma=200 on=500 off=4500 en=1");
+	EXPECT_REPLY("GET", "OK p=1 ma=50 on=500 off=4500 en=1 | p=2 ma=125 on=500 off=4500 en=1 | p=3 ma=200 on=500 off=4500 en=1");
 	EXPECT_PREFIX("GET 4", "ERR 3");
 	EXPECT_PREFIX("GET x", "ERR 2");
-	EXPECT_REPLY("SET 2 ma=140", "OK p=2 ma=140 on=500 off=4500");
-	EXPECT_REPLY("SET 2 on=250 off=0", "OK p=2 ma=140 on=250 off=0");
+	EXPECT_REPLY("SET 2 ma=140", "OK p=2 ma=140 on=500 off=4500 en=1");
+	EXPECT_REPLY("SET 2 on=250 off=0", "OK p=2 ma=140 on=250 off=0 en=1");
 	EXPECT_PREFIX("SET 2 ma=326", "ERR 3");
 	EXPECT_PREFIX("SET 2 on=9", "ERR 3");
 	EXPECT_PREFIX("SET 2 off=3600001", "ERR 3");
@@ -74,11 +74,26 @@ int main(void)
 	EXPECT_PREFIX("SET 2 ma=-5", "ERR 2");
 	EXPECT_PREFIX("SET 2 ma=1234567890", "ERR 2");
 	EXPECT_PREFIX("SET", "ERR 2");
-	EXPECT_REPLY("GET 2", "OK p=2 ma=140 on=250 off=0"); // failed SETs changed nothing
+	EXPECT_REPLY("GET 2", "OK p=2 ma=140 on=250 off=0 en=1"); // failed SETs changed nothing
 	EXPECT_REPLY("DEFAULTS", "OK defaults");
-	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500");
+	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
 	EXPECT_REPLY("SELECT 3", "OK active=3");
 	EXPECT_PREFIX("SELECT 0", "ERR 3");
+
+	// Enable / disable
+	EXPECT_REPLY("SET 1 en=0", "OK p=1 ma=50 on=500 off=4500 en=0");
+	EXPECT_PREFIX("SET 3 en=0", "ERR 5");          // active preset can't be disabled
+	EXPECT_REPLY("GET 3", "OK p=3 ma=200 on=500 off=4500 en=1");
+	EXPECT_PREFIX("SET 2 en=2", "ERR 3");
+	EXPECT_PREFIX("SELECT 1", "ERR 5");            // disabled preset can't be selected
+	EXPECT(app_next_enabled(3) == 2, "next after 3 with 1 disabled: %d", app_next_enabled(3));
+	EXPECT(app_next_enabled(2) == 3, "next after 2 with 1 disabled: %d", app_next_enabled(2));
+	EXPECT_REPLY("SET 2 en=0", "OK p=2 ma=125 on=500 off=4500 en=0");
+	EXPECT(app_next_enabled(3) == 3, "only 3 enabled: %d", app_next_enabled(3));
+	EXPECT_REPLY("SET 1 en=1", "OK p=1 ma=50 on=500 off=4500 en=1");
+	EXPECT(app_next_enabled(3) == 1, "next after 3 with 2 disabled: %d", app_next_enabled(3));
+	EXPECT_REPLY("DEFAULTS", "OK defaults");          // re-enables everything
+	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
 	EXPECT_REPLY("SAVE", "OK saved");
 	EXPECT(saved == 1, "save called");
 
@@ -116,7 +131,7 @@ int main(void)
 	EXPECT_REPLY("RUN 1", "OK run=1");
 	now_ms += 100; sched_update(now_ms);
 	edges_off = 0;
-	EXPECT_REPLY("SET 1 ma=60", "OK p=1 ma=60 on=500 off=4500");
+	EXPECT_REPLY("SET 1 ma=60", "OK p=1 ma=60 on=500 off=4500 en=1");
 	EXPECT(edges_off == 1 && last_dur == 100, "mid-pulse edit closes pulse (%d, %u)", edges_off, (unsigned)last_dur);
 
 	// Test pulse: 300 mA for 2 s, then the cycle restarts.
@@ -128,18 +143,18 @@ int main(void)
 	EXPECT(!sched_testing(), "test finished");
 
 	// Continuous load
-	EXPECT_REPLY("SET 1 off=0", "OK p=1 ma=60 on=500 off=0");
+	EXPECT_REPLY("SET 1 off=0", "OK p=1 ma=60 on=500 off=0 en=1");
 	EXPECT(sched_update(now_ms + 1) == 60, "continuous on");
 	now_ms += 1;
 	run_until(now_ms + 10000, 5);
 	EXPECT(sched_update(now_ms) == 60, "continuous stays on");
 
 	// Disabled preset draws nothing
-	EXPECT_REPLY("SET 1 ma=0", "OK p=1 ma=0 on=500 off=0");
+	EXPECT_REPLY("SET 1 ma=0", "OK p=1 ma=0 on=500 off=0 en=1");
 	EXPECT(sched_update(now_ms + 1) == 0, "disabled preset off");
 
 	// Next-edge calculation
-	EXPECT_REPLY("SET 1 ma=50 on=500 off=4500", "OK p=1 ma=50 on=500 off=4500");
+	EXPECT_REPLY("SET 1 ma=50 on=500 off=4500", "OK p=1 ma=50 on=500 off=4500 en=1");
 	now_ms += 1; sched_update(now_ms);
 	EXPECT(sched_ms_to_next_edge(now_ms) == 499, "next edge %u", (unsigned)sched_ms_to_next_edge(now_ms));
 	now_ms += 600; sched_update(now_ms);

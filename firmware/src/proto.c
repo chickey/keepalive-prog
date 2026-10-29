@@ -84,8 +84,8 @@ static int parse_preset(const char *s, int *n)
 static int fmt_preset(char *dst, int len, int n)
 {
 	const preset_t *p = &app.presets[n - 1];
-	return snprintf(dst, len, "p=%d ma=%u on=%lu off=%lu", n, p->ma,
-	                (unsigned long)p->on, (unsigned long)p->off);
+	return snprintf(dst, len, "p=%d ma=%u on=%lu off=%lu en=%u", n, p->ma,
+	                (unsigned long)p->on, (unsigned long)p->off, p->en);
 }
 
 static const char *state_name(uint8_t s)
@@ -135,8 +135,13 @@ static void cmd_set(char **tok, int nt)
 		} else if (ieq(tok[i], "off")) {
 			if (v > OFF_MAX_MS) { error(E_RANGE, "off out of range"); return; }
 			p.off = v;
+		} else if (ieq(tok[i], "en")) {
+			if (v > 1) { error(E_RANGE, "en must be 0 or 1"); return; }
+			p.en = (uint8_t)v;
 		} else { error(E_ARG, "unknown key"); return; }
 	}
+	// The active preset always stays enabled, so at least one always is.
+	if (!p.en && n == app.active) { error(E_STATE, "select another preset first"); return; }
 	app.presets[n - 1] = p;
 	if (n == app.active) sched_restart(hal_millis());
 	char tmp[64];
@@ -210,6 +215,7 @@ void proto_line(char *line)
 		cmd_set(tok, nt);
 	} else if (ieq(c, "SELECT")) {
 		if ((r = parse_preset(nt > 1 ? tok[1] : 0, &n))) { error(-r, "preset must be 1-3"); return; }
+		if (!app.presets[n - 1].en) { error(E_STATE, "preset is disabled"); return; }
 		app.active = (uint8_t)n;
 		sched_restart(hal_millis());
 		reply("active=%d", n);

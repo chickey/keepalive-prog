@@ -99,7 +99,7 @@
     </section>
 
     <h2 class="section-title">Presets</h2>
-    <p class="hint">The button on the Keep Alive steps through these. Its light blinks once, twice or three times to show which is active.</p>
+    <p class="hint">The button on the Keep Alive steps through these. Its light blinks once, twice or three times to show which is active. Untick <b>Enabled</b> on a preset to leave it out, for example to keep just one.</p>
     <div id="presets" class="presets"></div>
 
     <details class="advanced">
@@ -132,8 +132,11 @@
   <article class="preset">
     <header>
       <h3>Preset <span class="pn"></span></h3>
-      <span class="badge" hidden>Active</span>
-      <button class="btn small use" type="button">Use this preset</button>
+      <div class="ph-right">
+        <span class="badge" hidden>Active</span>
+        <button class="btn small use" type="button">Use this preset</button>
+        <label class="check en-wrap"><input class="en" type="checkbox"> Enabled</label>
+      </div>
     </header>
     <div class="field">
       <label class="flabel">Pulse current</label>
