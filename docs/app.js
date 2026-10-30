@@ -10,7 +10,7 @@ const el = {
   fault: $('fault'), btnRun: $('btnRun'),
   rMa: $('rMa'), rSet: $('rSet'), rVbus: $('rVbus'), rState: $('rState'),
   chart: $('chart'), testForm: $('testForm'), testMa: $('testMa'), testS: $('testS'),
-  presets: $('presets'), lightOpts: $('lightOpts'), limitsHint: $('limitsHint'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), log: $('log'), toast: $('toast'),
+  presets: $('presets'), lightOpts: $('lightOpts'), limitsHint: $('limitsHint'), tpl: $('presetTpl'), lastPulse: $('lastPulse'), lgNote: document.querySelector('.lg-note'), log: $('log'), toast: $('toast'),
 };
 
 const STATE_TEXT = { ON: 'Drawing', OFF: 'Between pulses', IDLE: 'Paused', FAULT: 'Fault' };
@@ -26,6 +26,7 @@ let dirty = false;
 let pulses = [];       // [{on, off, set, ma}] in device ms; off/ma null while open
 let live = { ma: 0, state: 'IDLE' };
 let clock = { dev: 0, at: 0 }; // last device time seen and when (performance.now)
+let frozenAt = null;   // device time the chart stopped at, while no trial runs
 let rafId = 0;
 const cards = [];
 
@@ -104,6 +105,7 @@ async function connect(useDemo) {
     setDirty(false);
     pulses = [];
     clock = { dev: st.t || 0, at: performance.now() };
+    setFrozen(running ? null : devNow());
     el.lastPulse.textContent = '';
     startChart();
     el.intro.hidden = true;
@@ -193,12 +195,14 @@ function applyEdge(e) {
   seeTime(e.t);
   const open = pulses.length && pulses[pulses.length - 1].off === null ? pulses[pulses.length - 1] : null;
   if (e._[0] === 'on') {
+    if (frozenAt !== null) setFrozen(null);   // a test pulse while stopped: show it live
     if (open) open.off = e.t;
     pulses.push({ on: e.t, off: null, set: e.set, ma: null });
   } else if (e._[0] === 'off' && open) {
     open.off = e.t;
     open.ma = e.ma;
     el.lastPulse.textContent = `Last pulse ${e.ma} mA for ${fmtSec(e.dur ?? e.t - open.on)}`;
+    if (!running) setTimeout(() => { if (!running && frozenAt === null) setFrozen(devNow()); }, 600);
   }
   const cutoff = e.t - 35000;
   while (pulses.length && pulses[0].off !== null && pulses[0].off < cutoff) pulses.shift();
@@ -314,6 +318,13 @@ function renderActive() {
 function renderRun() {
   el.btnRun.textContent = running ? 'Stop trial' : 'Start trial';
   el.btnRun.classList.toggle('primary', !!running);
+  setFrozen(running ? null : devNow());
+}
+
+// The chart scrolls during a trial (or a test pulse) and holds still otherwise.
+function setFrozen(t) {
+  frozenAt = t;
+  el.lgNote.textContent = t === null ? 'last 30 s' : 'paused';
 }
 
 function renderAll() {
@@ -480,14 +491,14 @@ function drawChart() {
   const cGrid = css.getPropertyValue('--line').trim();
   const cText = css.getPropertyValue('--muted').trim();
 
-  const now = devNow();
+  const now = frozenAt ?? devNow();
   const t0 = now - 30000;
   const vis = pulses.filter((p) => (p.off === null ? now : p.off) >= t0);
   const liveMa = live.state === 'ON' ? live.ma : null;
   const peak = Math.max(50, ...vis.map((p) => Math.max(p.set, p.ma ?? liveMa ?? 0)));
   const step = peak > 200 ? 100 : peak > 100 ? 50 : 25;
   const top = Math.ceil((peak * 1.1) / step) * step;
-  const padL = 36, padR = 8, padT = 10, padB = 10;
+  const padL = 36, padR = 8, padT = 10, padB = 22;
   const x = (t) => padL + ((t - t0) / 30000) * (w - padL - padR);
   const y = (v) => padT + (1 - v / top) * (h - padT - padB);
 
@@ -502,6 +513,20 @@ function drawChart() {
     ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w - padR, yy); ctx.stroke();
     ctx.fillText(v, padL - 6, yy);
   }
+
+  // Time axis: seconds before now (or before the trial stopped).
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.save();
+  ctx.setLineDash([2, 4]);
+  for (let s = 30; s >= 0; s -= 10) {
+    const xx = Math.round(x(now - s * 1000)) + 0.5;
+    if (s > 0 && s < 30) { ctx.beginPath(); ctx.moveTo(xx, padT); ctx.lineTo(xx, h - padB); ctx.stroke(); }
+    const label = s === 0 ? (frozenAt === null ? 'now' : 'stopped') : `−${s} s`;
+    ctx.textAlign = s === 30 ? 'left' : s === 0 ? 'right' : 'center';
+    ctx.fillText(label, s === 30 ? padL : s === 0 ? w - padR : xx, h - padB + 6);
+  }
+  ctx.restore();
 
   // Square waveform: 0 between pulses, a level for each pulse.
   const wave = (level, color, width, dash) => {

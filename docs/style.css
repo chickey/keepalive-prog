@@ -157,7 +157,7 @@ b { font-weight: 600; }
 .state[data-s="ON"] { color: var(--accent); }
 .state[data-s="FAULT"] { color: var(--err); }
 .chart-box { display: grid; gap: 6px; }
-#chart { width: 100%; height: 160px; display: block; border-radius: 8px; background: var(--surface-2); }
+#chart { width: 100%; height: 176px; display: block; border-radius: 8px; background: var(--surface-2); }
 .chart-legend { display: flex; gap: 16px; font-size: 0.78rem; color: var(--muted); }
 .lg::before { content: ""; display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
 .lg-ma::before { border-color: var(--chart-ma); }
