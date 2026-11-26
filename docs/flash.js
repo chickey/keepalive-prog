@@ -620,15 +620,25 @@ function init() {
 }
 
 // On load: if this site already knows the Keep Alive's port and it's free,
-// say which firmware it has, then close the port again.
+// say which firmware it has. A board in update mode (new boards ship with
+// only the loader) is connected straight away, ready for Install; so is one
+// running firmware when the config page sent us here (flash.html?connect).
+// Otherwise the port is closed again, so a page left open doesn't hold it.
 async function detectKeepAlive() {
+  const fromConfig = new URLSearchParams(location.search).has('connect');
   try {
     for (const p of await permittedPorts()) {
       try {
-        const { link, hello, mode } = await openSerial(new SerialTransport(p));
-        await link.close();
-        if (mode === 'app') showFound(hello.fw);
-        else showFound(hello.app === 'none' ? null : hello.app, 'Installed, not running (update mode)');
+        const found = await openSerial(new SerialTransport(p));
+        if (found.mode === 'loader' || fromConfig) {
+          if (session || busy) { await found.link.close(); return; }
+          session = { kind: 'serial', ...found, demo: false };
+          showSerialDevice();
+          updateButtons();
+          return;
+        }
+        await found.link.close();
+        showFound(found.hello.fw);
         return;
       } catch (e) {
         if (e?.code === 'serial-busy') {
