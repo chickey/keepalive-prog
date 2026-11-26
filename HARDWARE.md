@@ -11,7 +11,7 @@
 | 4 | PA2 / TIM2_CH3 | GATE_C | Leg C, 2× 47 Ω parallel (~213 mA) |
 | 6 | PA4 / ADC4 | VSENSE | VBUS via 1 MΩ / 150 kΩ (×0.1304) |
 | 8 | PA6 / ADC6 | ISENSE | Shunt 1 Ω via 1 kΩ / 100 nF |
-| 11 | PB1 | PRESET | Button to GND, use internal pull-up |
+| 11 | PB1 | PRESET (silkscreen: INPUT) | Button to GND, use internal pull-up. Held at power-up: stay in the update loader |
 | 14 | PC18 | SWDIO | WCH-LinkE (SDI) |
 | 15 | PB12 | LED | Active high, 1 kΩ |
 | 16 | PC19 | SWCLK | WCH-LinkE (SDI) |
@@ -39,8 +39,8 @@ Never configure PC10/PC11 as outputs (bonded internally to the USB pins).
 ## Buttons and boot
 
 - PRESET (PB1): tap (released within 0.5 s) = next enabled preset (disabled ones are skipped), LED blinks 1/2/3; selection saved to flash. Hold (≥ 0.5 s) = blink the current preset number without changing it.
-- BOOT button: pulls D+ to +3V3 via 4.7 kΩ. Hold while plugging in → WCH USB ISP bootloader (4348:55E0), flash with `wchisp`.
-- Firmware should also offer a command to jump to the bootloader.
+- BOOT button: pulls D+ to +3V3 via 4.7 kΩ. Hold while plugging in → WCH USB ISP bootloader (1A86:55E0 or 4348:55E0). Used by the factory rig to put the update loader on; customers don't need it.
+- `BOOT` command (1.1.0+): restarts into the update loader.
 
 ## USB behaviour
 
