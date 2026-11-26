@@ -24,6 +24,20 @@ static uint8_t  attached;
 static uint8_t  waiting;     // attached, no host yet
 static uint32_t wait_t0;
 
+// USB serial number: the chip ID as 8 hex digits (the uid= in HELLO). The
+// update loader reports the same, so the browser treats both as one port.
+uint8_t usb_serial_desc[18] = { 18, 3 };
+
+static void usb_serial_init(void)
+{
+	uint32_t u = ESIG->UID0 ^ ESIG->UID1;
+	for (int i = 0; i < 8; i++) {
+		uint8_t d = (u >> (28 - 4 * i)) & 15;
+		usb_serial_desc[2 + 2 * i] = d < 10 ? '0' + d : 'A' + d - 10;
+		usb_serial_desc[3 + 2 * i] = 0;
+	}
+}
+
 // CDC line coding (ignored, but hosts expect to read it back).
 static uint8_t line_coding[7] = { 0x00, 0xC2, 0x01, 0x00, 0x00, 0x00, 0x08 }; // 115200 8N1
 
@@ -149,6 +163,7 @@ void usbio_detect_and_attach(uint32_t now)
 	pc_mode(17, GPIO_CFGLR_IN_FLOAT);
 	if (high) return;
 
+	usb_serial_init();
 	USBFSSetup();
 	attached = 1;
 	waiting = 1;

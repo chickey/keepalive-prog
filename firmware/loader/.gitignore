@@ -1,0 +1,8 @@
+/loader.bin
+/loader.hex
+/loader.elf
+/loader.lst
+/loader.map
+/loader_ext.bin
+/loader.ld
+test/verify_cli

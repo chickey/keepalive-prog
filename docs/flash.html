@@ -43,47 +43,45 @@
 <main class="wrap">
   <section id="unsupported" class="notice warn" hidden>
     <strong>This browser can't flash the Keep Alive.</strong>
-    Flashing needs WebUSB and Web Serial, which work in Chrome, Edge or Opera on a desktop computer.
+    Installing firmware needs Web Serial, which works in Chrome, Edge or Opera on a desktop computer.
     You can still see how it works with <em>Try demo</em>.
   </section>
 
   <section class="fwcard" aria-labelledby="fwTitle">
     <h2 id="fwTitle">Firmware</h2>
     <dl class="kv kv2">
-      <div><dt>On your Keep Alive</dt><dd id="fwDevice" class="fwver">Not checked yet</dd><dd id="fwDeviceSub" class="fwsub">Plug it in and reload, or click Restart into update mode</dd></div>
+      <div><dt>On your Keep Alive</dt><dd id="fwDevice" class="fwver">Not checked yet</dd><dd id="fwDeviceSub" class="fwsub">Plug it in and click Connect</dd></div>
       <div><dt>Available to install</dt><dd id="fwAvail" class="fwver">Loading…</dd><dd id="fwAvailSub" class="fwsub"></dd></div>
     </dl>
     <p id="fwStatus" class="fwstatus" hidden></p>
     <p id="fwNote" class="hint" hidden></p>
   </section>
 
-  <section id="viaDevice" class="intro" aria-labelledby="updTitle">
-    <h2 id="updTitle">Update your Keep Alive</h2>
+  <section id="intro" class="intro" aria-labelledby="updTitle">
+    <h2 id="updTitle">Install or update</h2>
     <ol class="steps">
-      <li><span>Plug the Keep Alive into this computer as normal. If the config page is open in another tab, click <b>Disconnect</b> there first.</span></li>
-      <li><span>Click <b>Restart into update mode</b>. The first time, Chrome asks which serial port is the Keep Alive: choose <b>Eplop Keep Alive</b>.</span></li>
-      <li><span>A device list opens. When the Keep Alive appears in it, as an <i>unknown device from QinHeng Electronics</i> (the maker of its chip), pick it and click <b>Connect</b>.</span></li>
+      <li><span>Plug the Keep Alive into this computer, with nothing in its own socket. If the config page is open in another tab, click <b>Disconnect</b> there first.</span></li>
+      <li><span>Click <b>Connect</b>. The first time, choose <b>Eplop Keep Alive</b> from the list.</span></li>
       <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
     </ol>
     <div class="actions">
-      <button id="btnRestart" class="btn primary" type="button">Restart into update mode</button>
+      <button id="btnConnect" class="btn primary" type="button">Connect</button>
       <button id="btnDemo" class="btn" type="button">Try demo</button>
     </div>
-    <p class="hint">Works in Chrome, Edge or Opera on a desktop computer. Your saved presets and settings are kept.</p>
+    <p class="hint">Works in Chrome, Edge or Opera on a desktop computer, with no drivers to install. Your saved presets and settings are kept.</p>
   </section>
 
-  <details id="viaBoot" class="advanced">
-    <summary>First install, or a Keep Alive that won't start</summary>
+  <details id="viaPreset" class="advanced">
+    <summary>Keep Alive not in the list, or it won't start</summary>
     <div class="adv-body">
+      <p class="hint">Put it into update mode by hand:</p>
       <ol class="steps">
-        <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
-        <li><span>Click <b>Connect</b>. A device list opens; it's empty for now.</span></li>
-        <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive in. Keep holding for a second, then let go.</span></li>
-        <li><span>Straight away, pick the <i>unknown device from QinHeng Electronics</i> and click <b>Connect</b>. It only waits a few seconds; if it vanishes from the list, unplug it and try again.</span></li>
-        <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
+        <li><span>Unplug the Keep Alive, and unplug anything from its own socket.</span></li>
+        <li><span><b>Hold down the PRESET button</b> and plug the Keep Alive in. Let go once its light blinks briefly once a second: it's in update mode, and stays there until it's unplugged.</span></li>
+        <li><span>Click <b>Connect</b> and choose <b>Eplop Keep Alive (update)</b> from the list. Then click <b>Install firmware</b>.</span></li>
       </ol>
       <div class="actions">
-        <button id="btnConnect" class="btn" type="button">Connect</button>
+        <button id="btnConnect2" class="btn" type="button">Connect</button>
       </div>
     </div>
   </details>
@@ -94,11 +92,7 @@
       <button id="btnDisconnect" class="btn small" type="button">Disconnect</button>
     </div>
     <dl id="chipInfo" class="kv"></dl>
-    <p id="protNote" class="notice warn" hidden>
-      <strong>This chip's flash is locked (read-protected).</strong>
-      Unlocking erases it completely, including saved presets. After unlocking, unplug the Keep Alive,
-      then use <b>First install</b> below to connect again.
-    </p>
+    <p id="devNote" class="notice warn" hidden></p>
     <div class="actions">
       <button id="btnFlash" class="btn primary" type="button">Install firmware</button>
       <button id="btnUnlock" class="btn danger" type="button" hidden>Unlock chip</button>
@@ -115,35 +109,59 @@
     <summary>Trouble connecting</summary>
     <div class="adv-body help">
       <div class="adv-item col">
-        <h3>The device list is empty, or it appears and vanishes</h3>
-        <p>The Keep Alive only shows up while it's in update mode, and it leaves update mode after a few seconds if nothing talks to it, so pick it as soon as it appears. If <b>Restart into update mode</b> can't reach it, use <b>First install</b> with the BOOT button instead. If it doesn't appear at all, try another cable: some USB cables only carry power.</p>
+        <h3>The Keep Alive isn't in the list</h3>
+        <p>Check it's plugged straight into this computer, and try another cable: some USB cables only carry power. If the config page is open in another tab, click <b>Disconnect</b> there. If it still doesn't appear, use update mode by hand (hold PRESET while plugging it in, above).</p>
+      </div>
+      <div class="adv-item col">
+        <h3>Linux: “couldn't open the port”</h3>
+        <p>Your user needs access to serial ports. Add yourself to the <code>dialout</code> group, then log out and back in:</p>
+        <pre class="log code">sudo usermod -aG dialout "$USER"</pre>
+      </div>
+      <div class="adv-item col">
+        <h3>macOS: it appears, then disappears</h3>
+        <p>On some Macs a prompt asks whether to allow the new accessory. Click <b>Allow</b>; the page waits for it.</p>
+      </div>
+    </div>
+  </details>
+
+  <details id="viaBoot" class="advanced">
+    <summary>Advanced: WCH bootloader (BOOT button)</summary>
+    <div class="adv-body help">
+      <p>For boards with no update loader on them: factory-fresh chips, or a Keep Alive whose loader is damaged. This installs the update loader and the firmware together, using the bootloader built into the chip. Windows needs a driver for it (below); macOS and Linux don't.</p>
+      <ol class="steps">
+        <li><span>Unplug the Keep Alive, and unplug anything from its own USB socket.</span></li>
+        <li><span>Click <b>Connect with BOOT</b>. A device list opens; it's empty for now.</span></li>
+        <li><span><b>Hold down the BOOT button</b> and plug the Keep Alive in. Keep holding for a second, then let go.</span></li>
+        <li><span>Straight away, pick the <i>unknown device from QinHeng Electronics</i> and click <b>Connect</b>. It only waits a few seconds; if it vanishes from the list, unplug it and try again.</span></li>
+        <li><span>Check the details, then click <b>Install firmware</b>.</span></li>
+      </ol>
+      <div class="actions">
+        <button id="btnIsp" class="btn" type="button">Connect with BOOT</button>
       </div>
       <div class="adv-item col">
         <h3>Windows: “couldn't open the device”</h3>
-        <p>Windows needs the generic WinUSB driver for the update mode. This is a one-time step per computer:</p>
+        <p>Windows needs the generic WinUSB driver for the chip's bootloader. This is a one-time step per computer:</p>
         <ol class="plain">
-          <li>Put the Keep Alive in update mode (hold BOOT while plugging it in).</li>
+          <li>Put the Keep Alive in the bootloader (hold BOOT while plugging it in).</li>
           <li>Download and run <a href="https://zadig.akeo.ie/" target="_blank" rel="noopener">Zadig</a>.</li>
           <li>Choose <b>Options → List All Devices</b>, then pick the device with USB ID <code>4348 55E0</code> or <code>1A86 55E0</code> (often called <i>USB Module</i>).</li>
           <li>Set the driver on the right to <b>WinUSB</b> and click <b>Replace Driver</b> (or <b>Install Driver</b>).</li>
           <li>Unplug the Keep Alive, return here and start again from step 1.</li>
         </ol>
-        <p>If you've used WCH's own flashing tools, their driver will have claimed the device; Zadig replaces it. WCH's tools then need their driver back, which you can reinstall from WCH's site.</p>
       </div>
       <div class="adv-item col">
         <h3>Linux: “couldn't open the device”</h3>
-        <p>Your user needs permission to open the device. Add a udev rule, then unplug and replug the Keep Alive:</p>
+        <p>Add a udev rule, then unplug and replug the Keep Alive:</p>
         <pre class="log code">printf '%s\n' 'SUBSYSTEM=="usb", ATTRS{idVendor}=="4348", ATTRS{idProduct}=="55e0", MODE="0666"' 'SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55e0", MODE="0666"' | sudo tee /etc/udev/rules.d/50-wch-isp.rules
 sudo udevadm control --reload-rules</pre>
       </div>
-      <div class="adv-item col">
-        <h3>macOS</h3>
-        <p>No driver is needed. Close any other program that might be using the device, such as WCH's flashing tools.</p>
-      </div>
-      <div class="adv-item col">
-        <h3>Communication log</h3>
-        <pre id="log" class="log" aria-live="off"></pre>
-      </div>
+    </div>
+  </details>
+
+  <details class="advanced">
+    <summary>Communication log</summary>
+    <div class="adv-body">
+      <pre id="log" class="log" aria-live="off"></pre>
     </div>
   </details>
 </main>

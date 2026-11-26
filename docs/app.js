@@ -5,7 +5,7 @@ import { initTheme } from './theme.js';
 const $ = (id) => document.getElementById(id);
 const el = {
   connState: $('connState'), btnConnect: $('btnConnect'), btnDemo: $('btnDemo'), btnDisconnect: $('btnDisconnect'),
-  unsupported: $('unsupported'), intro: $('intro'), device: $('device'),
+  unsupported: $('unsupported'), intro: $('intro'), device: $('device'), loaderNote: $('loaderNote'),
   devInfo: $('devInfo'), dirty: $('dirty'), btnSave: $('btnSave'), btnDefaults: $('btnDefaults'),
   fault: $('fault'), btnRun: $('btnRun'),
   rMa: $('rMa'), rSet: $('rSet'), rVbus: $('rVbus'), rState: $('rState'),
@@ -83,6 +83,17 @@ async function connect(useDemo) {
   link = new Link(transport, { onEvent, onClose: onClosed, onLog: log });
   try {
     const hello = parseKV(await link.cmd('HELLO'));
+    el.loaderNote.hidden = true;
+    if (hello._[0] === 'KA-LOADER') {
+      // New boards ship with only the update loader; firmware comes from the firmware page.
+      el.loaderNote.querySelector('span').textContent = hello.app === 'none'
+        ? 'It has no firmware yet. Install it from the firmware page, then come back here to set it up.'
+        : `Its firmware (${hello.app}) isn't running. Install or start it from the firmware page, or unplug the Keep Alive and plug it back in.`;
+      el.loaderNote.hidden = false;
+      setConn('off', 'Not connected');
+      await link.close();
+      return;
+    }
     if (hello._[0] !== 'KA-PROG') throw new Error('That port is not a Keep Alive.');
     if (hello.proto > PAGE_PROTO) throw new Error('This Keep Alive has newer firmware than this page understands. Reload the page and try again.');
     limits = parseKV(await link.cmd('LIMITS'));

@@ -56,8 +56,8 @@ int main(void)
 	sched_restart(now_ms);
 
 	// Identification and limits
-	EXPECT_REPLY("HELLO", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D");
-	EXPECT_REPLY("hello", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D");
+	EXPECT_REPLY("HELLO", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D boot=loader");
+	EXPECT_REPLY("hello", "OK KA-PROG fw=" FW_VERSION " proto=1 hw=A uid=1A2B3C4D boot=loader");
 	EXPECT_REPLY("LIMITS", "OK presets=3 ma_max=325 on_min=10 on_max=30000 off_max=3599990 period_max=3600000 duty_max=50 stream_min=100 stream_max=60000");
 
 	// Presets

@@ -6,3 +6,5 @@
 /keepalive.map
 /keepalive_ext.bin
 test/test_host
+/app.ld
+/keepalive.kai
