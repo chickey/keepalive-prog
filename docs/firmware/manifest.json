@@ -1,10 +1,16 @@
 {
   "name": "Keep Alive",
-  "version": "1.0.5",
-  "file": "keepalive.bin",
-  "size": 16360,
-  "sha256": "b7c7401cab302362e33556ef1c8bb9a0577a1aa7a462af6525843ab8c534cadd",
-  "built": "2026-10-29",
+  "version": "1.1.0-test3",
+  "file": "keepalive.kai",
+  "size": 16568,
+  "sha256": "265b634d872774f07fb06e3bc6db286985d46aea6750fd4a421e88258a4e735a",
+  "built": "2026-11-26",
   "chip": "CH32X035F8U6",
-  "note": "Pre-release build: tested on one board (Mac and a power bank)."
+  "loader": "1.1.0-test3",
+  "full": {
+    "file": "keepalive-full.bin",
+    "size": 32824,
+    "sha256": "50599698848e10391ad8b5fac1f20868b80f5e808dd891c70cddccf99b51c961"
+  },
+  "note": "Test build: update loader and signed firmware. Not for release."
 }

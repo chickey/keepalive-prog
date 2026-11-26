@@ -192,7 +192,7 @@ void proto_line(char *line)
 	int n, r;
 
 	if (ieq(c, "HELLO")) {
-		reply("KA-PROG fw=%s proto=%d hw=%s uid=%08lX", FW_VERSION, PROTO_VERSION, HW_REV,
+		reply("KA-PROG fw=%s proto=%d hw=%s uid=%08lX boot=loader", FW_VERSION, PROTO_VERSION, HW_REV,
 		      (unsigned long)hal_uid());
 	} else if (ieq(c, "LIMITS")) {
 		reply("presets=%d ma_max=%d on_min=%d on_max=%lu off_max=%lu period_max=%lu duty_max=%d stream_min=%d stream_max=%lu",

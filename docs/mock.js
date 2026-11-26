@@ -4,8 +4,8 @@
 const LIMITS = { presets: 3, ma_max: 325, on_min: 10, on_max: 30000, off_max: 3599990, period_max: 3600000, duty_max: 50, stream_min: 100, stream_max: 60000 };
 const DEFAULTS = [
   { ma: 50, on: 500, off: 4500, en: 1 },
-  { ma: 125, on: 500, off: 4500, en: 1 },
-  { ma: 200, on: 500, off: 4500, en: 1 },
+  { ma: 125, on: 500, off: 4500, en: 0 },
+  { ma: 200, on: 500, off: 4500, en: 0 },
 ];
 
 export class MockTransport {
@@ -16,7 +16,7 @@ export class MockTransport {
     this.flash = { presets: DEFAULTS.map((p) => ({ ...p })), active: 1 };
     this.presets = this.flash.presets.map((p) => ({ ...p }));
     this.active = this.flash.active;
-    this.led = 2;
+    this.led = 0;
     this.run = 0;
     this.runStart = 0;
     this.test = null;
@@ -179,6 +179,7 @@ export class MockTransport {
         return setTimeout(() => this._send('OK saved'), 120);
       case 'DEFAULTS':
         this.presets = DEFAULTS.map((p) => ({ ...p }));
+        this.active = 1;
         return this._send('OK defaults');
       case 'OPTS':
         for (const [k, v] of Object.entries(args)) {

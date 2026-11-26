@@ -88,7 +88,7 @@ Device options (firmware 1.0.3+). Without arguments, reports them. Persisted by 
 ```
 | Option | Meaning |
 |---|---|
-| `led` | The light in keep-alive mode (on a power bank). `0` = off. `1` = one short flash as each pulse starts. `2` (default) = blink the active preset number every 10 s. In every mode the light still blinks on a button press and at power-up, and flashes for faults. On a PC it is on steadily regardless. |
+| `led` | The light in keep-alive mode (on a power bank). `0` = off. `1` = one short flash as each pulse starts. `2` = blink the active preset number every 10 s. New boards default to `0` (1.1.0+; before that, `2`). In every mode the light still blinks on a button press and at power-up, and flashes for faults. On a PC it is on steadily regardless. |
 
 Older firmware answers `ERR 1 unknown command`; the page then hides the option.
 
@@ -146,7 +146,8 @@ after the test pulse. The test pulse produces `!E` edges like any other.
 ```
 
 ### `BOOT`
-Reply, then reboot into the WCH USB bootloader for a firmware update.
+Reply, then restart into the update loader (1.1.0+; earlier firmware went to
+WCH's USB bootloader instead). `HELLO` from 1.1.0 includes `boot=loader` to say so.
 ```
 > BOOT
 < OK bootloader
@@ -181,3 +182,37 @@ Reply, then reboot into the WCH USB bootloader for a firmware update.
 
 - USB VID/PID (pid.codes or WCH) — the page filters on it.
 - USB product string: "Eplop Keep Alive" (agreed).
+
+## Update loader
+
+Since 1.1.0 the first 16 KB of flash hold an update loader, and the firmware
+runs after it. The loader appears as the same USB serial port (same IDs and
+serial number, product name *Eplop Keep Alive (update)*), so the flash page
+reaches it over Web Serial with no driver on any system. It stays in update
+mode when the firmware asked (`BOOT`), when INPUT is held at power-up, or when
+no valid firmware is installed (new boards ship like this). Otherwise it
+starts the firmware straight away.
+
+Same line format as above: one command, one `OK`/`ERR` reply.
+
+| Command | Reply |
+|---|---|
+| `HELLO` | `OK KA-LOADER ldr=<ver> proto=1 chip=CH32X035F8U6 uid=<8 hex> sn=<24 hex> app=<ver>\|none max=<bytes> keys=<n>` |
+| `BEGIN <256 hex>` | The 128-byte image header. Checks it, then marks the installed firmware as gone. `OK` |
+| `DATA <offset> <hex>` | Up to 128 bytes at `offset` (decimal, must follow on from the last). `OK <bytes so far>` |
+| `END` | Checks the CRC and the Ed25519 signature (about 7 s), then marks the firmware installed. `OK verified app=<ver>`, or `ERR 6` |
+| `RUN` | Restarts into the firmware. `ERR 7` if none is installed |
+| `ABORT` | Drops an unfinished upload |
+| `CLEAR` | Marks the firmware as not installed (testing, factory); presets are kept |
+
+Errors: `1` unknown command, `2` bad argument, `3` refused (not a Keep Alive
+image, or a lower `sec_level` than the installed one), `4` flash write failed,
+`5` out of order, `6` image damaged or not signed by Eplop, `7` no firmware.
+
+The image format (`.kai`) is the header from `firmware/src/image.h` followed
+by the firmware: magic `KAI1`, version, length, `sec_level`, key ID, CRC-32,
+and an Ed25519 signature over the first 64 header bytes plus the image. The
+loader holds two public keys (`firmware/loader/keys.h`): 0 signs releases, 1
+is an offline backup. An upload that fails part way leaves no firmware
+installed, so the board stays in update mode until a complete, genuine image
+goes on. The presets page (0xF700) is never touched.

@@ -29,7 +29,6 @@
 #define FUSB_USB_REV 0x0100
 #define FUSB_STR_MANUFACTURER u"Eplop"
 #define FUSB_STR_PRODUCT      u"Eplop Keep Alive"
-#define FUSB_STR_SERIAL       u"0001"
 
 //Taken from http://www.usbmadesimple.co.uk/ums_ms_desc_dev.htm
 static const uint8_t device_descriptor[] = {
@@ -155,11 +154,9 @@ const static struct usb_string_descriptor_struct string2 __attribute__((section(
 	3,
 	FUSB_STR_PRODUCT
 };
-const static struct usb_string_descriptor_struct string3 __attribute__((section(".rodata")))  = {
-	sizeof(FUSB_STR_SERIAL),
-	3,
-	FUSB_STR_SERIAL
-};
+// Serial number: the chip ID as 8 hex digits, filled in by usb_serial_init()
+// before USB starts. Firmware and loader report the same one.
+extern uint8_t usb_serial_desc[18];
 
 // This table defines which descriptor data is sent for each specific
 // request from the host (in wValue and wIndex).
@@ -175,7 +172,7 @@ const static struct descriptor_list_struct {
 	{0x00000300, (const uint8_t *)&language, 4},
 	{0x04090301, (const uint8_t *)&string1, string1.bLength},
 	{0x04090302, (const uint8_t *)&string2, string2.bLength},
-	{0x04090303, (const uint8_t *)&string3, string3.bLength}
+	{0x04090303, usb_serial_desc, 18}
 };
 #define DESCRIPTOR_LIST_ENTRIES ((sizeof(descriptor_list))/(sizeof(struct descriptor_list_struct)) )
 

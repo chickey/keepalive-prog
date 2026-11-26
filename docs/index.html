@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#f15600">
 <link rel="icon" href="favicon.png" type="image/png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=1.1.0-2">
 <script>try { const t = localStorage.getItem('ka-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <script type="module" src="app.js"></script>
 </head>
@@ -50,12 +50,17 @@
     You can still look around with <em>Try demo</em>.
   </section>
 
+  <section id="loaderNote" class="notice warn" hidden>
+    <strong>This Keep Alive is in update mode.</strong> <span></span>
+    <a class="btn small" href="flash.html">Open the firmware page</a>
+  </section>
+
   <section id="intro" class="intro">
     <h2>Connect your Keep Alive</h2>
     <ol class="steps">
       <li><span>Plug the Keep Alive into a USB port on this computer, with nothing plugged into its own socket.</span></li>
       <li><span>Click <b>Connect</b> and choose <b>Eplop Keep Alive</b> from the list.</span></li>
-      <li><span>Adjust the three presets, then click <b>Save to device</b>.</span></li>
+      <li><span>Set up the pulse (and add more presets if you want them), then click <b>Save to device</b>.</span></li>
     </ol>
     <p class="hint">Pulsing pauses while the Keep Alive is connected to a computer. Use <b>Start trial</b> to watch a preset run.</p>
     <p class="hint">Need new firmware? Use the <a href="flash.html">firmware flasher</a>.</p>
@@ -99,7 +104,7 @@
     </section>
 
     <h2 class="section-title">Presets</h2>
-    <p class="hint">The button on the Keep Alive steps through these. Its light blinks once, twice or three times to show which is active. Untick <b>Enabled</b> on a preset to leave it out, for example to keep just one.</p>
+    <p class="hint">Most setups need just one preset. Use <b>Add preset</b> for up to three; the INPUT button on the Keep Alive then steps through them, and its light blinks once, twice or three times to show which is active.</p>
     <p id="limitsHint" class="hint" hidden></p>
     <div id="presets" class="presets"></div>
 
@@ -140,7 +145,7 @@
       <div class="ph-right">
         <span class="badge" hidden>Active</span>
         <button class="btn small use" type="button">Use this preset</button>
-        <label class="check en-wrap"><input class="en" type="checkbox"> Enabled</label>
+        <button class="btn small remove" type="button">Remove</button>
       </div>
     </header>
     <div class="field">

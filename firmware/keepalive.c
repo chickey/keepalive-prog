@@ -11,6 +11,7 @@
 #include "ui.h"
 #include "usbio.h"
 #include "power.h"
+#include "image.h"
 
 void proto_stream_status(void);
 
@@ -220,7 +221,13 @@ int main(void)
 
 		if (boot_pending && (usbio_tx_empty() || (int32_t)(now - boot_at) >= 0)) {
 			Delay_Ms(20);
-			funRebootToBootloader();
+			// Restart into the update loader (not WCH's bootloader): it then
+			// appears as the same serial port, which needs no driver anywhere.
+			volatile uint32_t *req = (volatile uint32_t *)BOOT_REQ_ADDR;
+			load_set_target(0);
+			req[0] = BOOT_REQ_MAGIC;
+			req[1] = ~BOOT_REQ_MAGIC;
+			PFIC->SCTLR = 1u << 31;
 		}
 
 		// Keep-alive mode: deep sleep until the next thing needs doing.

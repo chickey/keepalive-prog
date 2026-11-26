@@ -9,7 +9,7 @@ be stored and selected with the on-board button.
 
 | Folder | Contents |
 |---|---|
-| `docs/` | Web Serial config page and WebUSB firmware flasher, served by GitHub Pages from `/docs` |
+| `docs/` | Web Serial config page and firmware flasher, served by GitHub Pages from `/docs` |
 | `HARDWARE.md` | Pin map, nets and the hardware decisions the firmware relies on |
 | `PROTOCOL.md` | Command protocol between the config page and the device |
 | `firmware/` | Device firmware; see `firmware/README.md` for building, flashing and the bring-up checklist |
@@ -23,41 +23,40 @@ gets served. Web Serial needs HTTPS, which Pages provides.
 ## Firmware flasher
 
 `docs/flash.html` (linked from the config page) installs firmware from the
-browser over WebUSB, using the CH32X035's built-in USB bootloader. Needs
-Chrome, Edge or Opera on a desktop computer.
+browser. Needs Chrome, Edge or Opera on a desktop computer.
 
-- **Updating a working Keep Alive:** plug it in normally and click **Restart
-  into update mode**. The page sends `BOOT` over Web Serial (the first time,
-  Chrome asks for the serial port), opens the WebUSB device list, and the
-  bootloader appears in it a moment later.
-- **First install, or broken firmware:** open the device list with
-  **Connect**, then hold the BOOT button while plugging the Keep Alive in.
+Since 1.1.0 every Keep Alive has an **update loader** at the start of flash
+(see *Update loader* in `PROTOCOL.md`). It appears as the same USB serial port
+as the firmware, so installing works over Web Serial with **no driver on
+Windows, macOS or Linux**:
 
-Either way the bootloader shows up as USB ID `1A86:55E0` or `4348:55E0`
-(Chrome: "unknown device from QinHeng Electronics"). Pick it straight away:
-it starts the normal firmware again about 5 seconds after appearing if
-nothing talks to it. Once connected, the page shows the chip and pings the
-bootloader so it stays in update mode; nothing is written until **Install
-firmware** is clicked. It checks the chip is a CH32X035F8U6, erases, writes,
-verifies and restarts it.
+- **Install or update:** click **Connect** (the first time, pick *Eplop Keep
+  Alive*), then **Install firmware**. A running Keep Alive is told to restart
+  into update mode (`BOOT`) and the page reconnects by itself. Boards ship
+  with only the loader, which stays in update mode until firmware is installed.
+- **Recovery:** hold INPUT while plugging it in to stay in update mode.
 
-- **Windows:** WebUSB can't open the device while WCH's own driver owns it.
-  Install the WinUSB driver for the bootloader (`1A86:55E0` or `4348:55E0`) with [Zadig](https://zadig.akeo.ie/)
-  once; the page's *Trouble connecting* section walks through it.
-- **Linux:** needs a udev rule (shown on the page).
-- **macOS:** works as is.
+The loader only accepts firmware signed with Eplop's key (Ed25519), checks it
+before marking it installed, and keeps the saved presets.
 
-It flashes `docs/firmware/keepalive.bin`, described by
-`docs/firmware/manifest.json` (version, size, SHA-256). To publish a new build,
-copy `firmware/prebuilt/keepalive.bin` there and update the manifest:
+**Advanced, WCH bootloader (BOOT button, WebUSB):** for boards with no loader
+(factory-fresh chips, or firmware older than 1.1.0). It installs the loader
+and the firmware together from `keepalive-full.bin`. Windows needs the WinUSB
+driver for it ([Zadig](https://zadig.akeo.ie/)); Linux needs a udev rule; both
+are on the page. Production boards get the loader on the factory rig instead
+(`tools/rig`).
+
+`docs/firmware/` holds `keepalive.kai` (the signed firmware),
+`keepalive-full.bin` (loader + firmware for the WCH route) and
+`manifest.json`. To publish a build:
 
 ```
-cd firmware && make site
+cd firmware && make prebuilt && make site NOTE="…"
 ```
 
-The protocol code (`docs/isp.js`) follows
-[wchisp](https://github.com/ch32-rs/wchisp). It has been used on the first
-Rev A board from macOS; Windows and Linux are untested.
+Signing needs the private key (`~/.eplop/keepalive-primary.pem` by default,
+`KEY=` to change); see `tools/kasign.py`. The WebUSB code (`docs/isp.js`)
+follows [wchisp](https://github.com/ch32-rs/wchisp).
 
 ## Trying the page locally
 
@@ -88,7 +87,10 @@ without WinUSB) and `#demo-badverify`.
 | `docs/flash.html`, `flash.js` | Firmware flasher page and UI logic |
 | `docs/isp.js` | WCH USB ISP bootloader protocol over WebUSB |
 | `docs/isp-mock.js` | Simulated bootloader for the flasher's demo mode |
+| `docs/loader-link.js`, `loader-mock.js` | Update loader protocol over Web Serial, and its demo |
 | `docs/firmware/` | Firmware the flasher installs, plus `manifest.json` |
+| `tools/kasign.py` | Signing keys, signing, factory images |
+| `tools/rig/` | Raspberry Pi factory rig: puts the loader on boards, many at once |
 
 ## Licence
 
