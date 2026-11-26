@@ -2,3 +2,4 @@
 rig-log.csv
 __pycache__/
 rig-server.log
+rig-settings.json

@@ -12,6 +12,7 @@
   --ok: #2ea043; --ok-soft: rgba(46,160,67,.16);
   --bad: #f85149; --bad-soft: rgba(248,81,73,.16);
   --busy: #d29922; --busy-soft: rgba(210,153,34,.16);
+  --ready: #388bfd; --ready-soft: rgba(56,139,253,.16);
   --radius: 14px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -91,6 +92,22 @@ td.why { white-space: normal; color: var(--muted); }
 .r { font-weight: 700; } .r.PASS { color: var(--ok); } .r.FAIL { color: var(--bad); }
 .none { color: var(--muted); padding: 14px; }
 
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { font: inherit; font-size: .88rem; border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+.batchbar { display: none; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.batchbar.on { display: flex; }
+.batchbar .msg { font-size: 1.05rem; font-weight: 600; }
+.batchbar .msg small { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; margin-top: 2px; }
+.batchbar .go { margin-left: auto; font-size: 1.05rem; font-weight: 700; padding: 12px 26px; border-radius: 12px; border: 0;
+  background: var(--ready); color: #fff; cursor: pointer; }
+.batchbar .go:disabled { opacity: .4; cursor: default; }
+.batchbar .stop { margin-left: auto; }
+.tile.ready { border-color: var(--ready); }
+.tile.ready .badge { background: var(--ready-soft); color: var(--ready); }
+.tile.ready .bar > i { background: var(--ready); }
+.queue { font-size: 1.6rem; font-weight: 700; color: var(--ready); }
 .banner { display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
 .banner.on { display: block; }
 
@@ -106,6 +123,10 @@ td.why { white-space: normal; color: var(--muted); }
   <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Keep Alive factory rig</h1></div>
   <div class="image" id="image">Connecting…</div>
   <div class="right">
+    <div class="seg" role="group" aria-label="Mode">
+      <button type="button" data-mode="auto" aria-pressed="true" title="Flash each board as soon as it's plugged in">Automatic</button>
+      <button type="button" data-mode="batch" aria-pressed="false" title="Plug several boards in, then flash them one at a time">Batch</button>
+    </div>
     <span class="link" id="link"><i></i><span>Running</span></span>
     <button class="btn" id="sound" type="button" aria-pressed="true">Sound on</button>
   </div>
@@ -116,13 +137,19 @@ td.why { white-space: normal; color: var(--muted); }
 <section class="stats" aria-label="Totals this session">
   <div class="stat ok"><div class="k">Passed</div><div class="v" id="passed">0</div></div>
   <div class="stat bad"><div class="k">Failed</div><div class="v" id="failed">0</div></div>
-  <div class="stat busy"><div class="k">In progress</div><div class="v" id="busy">0</div></div>
+  <div class="stat busy"><div class="k">In progress or waiting</div><div class="v" id="busy">0</div></div>
   <div class="stat"><div class="k">Session</div><div class="v" id="uptime">0:00</div></div>
+</section>
+
+<section class="batchbar" id="batchbar" aria-live="polite">
+  <div class="msg" id="batchMsg"></div>
+  <button class="go" id="btnGo" type="button">Flash</button>
+  <button class="btn stop" id="btnStop" type="button" hidden>Stop after this board</button>
 </section>
 
 <section aria-label="Hub ports">
   <div class="tiles" id="tiles"></div>
-  <div class="empty" id="empty"><b>Plug boards into the hub</b>Each one appears here as it's found. If a board doesn't appear, hold BOOT while plugging it in, then let go after a second.</div>
+  <div class="empty" id="empty"><b>Plug boards into the hub</b>Hold BOOT while plugging each one in, then let go after a second. Each appears here as it's found.</div>
 </section>
 
 <h2>Recent results <a class="btn" href="/log.csv" download>Download log</a></h2>
@@ -137,7 +164,7 @@ td.why { white-space: normal; color: var(--muted); }
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const STEP = { connecting: 'Connecting', unlocking: 'Unlocking', erasing: 'Erasing', writing: 'Writing', verifying: 'Verifying',
-  restarting: 'Restarting', checking: 'Checking the loader', waiting: 'Waiting' };
+  restarting: 'Restarting', checking: 'Checking the loader', waiting: 'Waiting', ready: 'Ready' };
 
 let sound = true;
 try { sound = localStorage.getItem('rig-sound') !== 'off'; } catch {}
@@ -172,10 +199,11 @@ const lastState = {};
 
 function tile(s) {
   const done = s.state === 'PASS' || s.state === 'FAIL';
-  const cls = s.state === 'PASS' ? 'pass' : s.state === 'FAIL' ? 'fail' : s.busy ? 'busy' : '';
-  const badge = s.state === 'PASS' ? 'PASS' : s.state === 'FAIL' ? 'FAIL' : s.busy ? 'WORKING' : 'IDLE';
+  const cls = s.state === 'PASS' ? 'pass' : s.state === 'FAIL' ? 'fail' : s.state === 'ready' ? 'ready' : s.busy ? 'busy' : '';
+  const badge = s.state === 'PASS' ? 'PASS' : s.state === 'FAIL' ? 'FAIL' : s.state === 'ready' ? 'READY' : s.busy ? 'WORKING' : 'IDLE';
   let body;
-  if (s.state === 'PASS') body = `<div class="big">✓ Done</div><div class="sub">${esc(s.detail)}</div>`;
+  if (s.state === 'ready') body = `<div class="queue">#${s.queue ?? '–'} in queue</div><div class="sub">Waiting for Flash</div>`;
+  else if (s.state === 'PASS') body = `<div class="big">✓ Done</div><div class="sub">${esc(s.detail)}</div>`;
   else if (s.state === 'FAIL') body = `<div class="big">✕ Failed</div><div class="sub">${esc(s.detail)}</div>`;
   else body = `<div class="step">${esc(STEP[s.state] || s.state)}${s.detail ? ` <span class="sub">${esc(s.detail)}</span>` : ''}</div>
     ${s.secs != null ? `<div class="sub">${s.secs.toFixed(0)} s</div>` : ''}`;
@@ -190,11 +218,38 @@ function tile(s) {
   </article>`;
 }
 
+let mode = 'auto';
+async function post(path) {
+  try { const r = await fetch(path, { method: 'POST' }); if (r.ok) render(await r.json()); } catch {}
+}
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { if (!demo) post(`/mode?m=${b.dataset.mode}`); }));
+$('btnGo').addEventListener('click', () => { if (!demo) post('/start'); });
+$('btnStop').addEventListener('click', () => { if (!demo) post('/cancel'); });
+
+function renderBatch(st) {
+  mode = st.mode;
+  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === mode));
+  const b = st.batch;
+  $('batchbar').classList.toggle('on', mode === 'batch' || !!b);
+  $('btnGo').hidden = !!b;
+  $('btnStop').hidden = !b;
+  $('btnStop').disabled = !!b?.cancel;
+  $('btnStop').textContent = b?.cancel ? 'Stopping after this board…' : 'Stop after this board';
+  $('btnGo').disabled = !st.ready;
+  $('btnGo').textContent = st.ready ? `Flash ${st.ready} board${st.ready === 1 ? '' : 's'}` : 'Flash';
+  $('batchMsg').innerHTML = b
+    ? `Flashing board ${Math.min(b.done + 1, b.total)} of ${b.total}<small>One at a time, in port order. Results are logged as each finishes.</small>`
+    : st.ready
+      ? `${st.ready} board${st.ready === 1 ? '' : 's'} ready<small>Plug in more with BOOT held, or flash these now. Waiting boards are kept in the bootloader.</small>`
+      : 'Batch mode<small>Plug boards in with BOOT held; they wait here until you press Flash.</small>';
+}
+
 function render(st) {
+  renderBatch(st);
   $('image').innerHTML = `Loader <b>${esc(st.loader)}</b>${st.with_app ? ' + firmware' : ''} · ${esc(st.image)} · ${esc(st.sha)}`;
   $('passed').textContent = st.passed;
   $('failed').textContent = st.failed;
-  $('busy').textContent = st.slots.filter((s) => s.busy).length;
+  $('busy').textContent = st.slots.filter((s) => s.busy || s.state === 'ready').length;
   $('uptime').textContent = fmtUp(st.uptime);
   $('empty').hidden = st.slots.length > 0;
   $('tiles').innerHTML = st.slots.map(tile).join('');
@@ -213,8 +268,19 @@ function render(st) {
 // ?demo shows made-up boards, to check the layout without hardware.
 const demo = new URLSearchParams(location.search).has('demo');
 const t0 = Date.now();
+const demoBatch = new URLSearchParams(location.search).get('demo') === 'batch';
 function demoState() {
   const t = (Date.now() - t0) / 1000;
+  if (demoBatch) {
+    const slots = [1, 2, 3, 4].map((n) => {
+      const base = { n, port: `1-1.${n}`, chip: 'CDABA8F069BEDE' + (10 + n), plugged: true, busy: false, secs: null, progress: 0, detail: '' };
+      if (n === 1) return { ...base, state: 'PASS', detail: 'loader 1.1.0  id 3F0A91C2', progress: 1 };
+      if (n === 2) return { ...base, state: 'writing', detail: `${Math.round((t % 10) * 10)}%`, progress: 0.08 + (t % 10) / 16, busy: true, secs: t % 10 };
+      return { ...base, state: 'ready', queue: n - 2 };
+    });
+    return { mode: 'batch', ready: 2, batch: { total: 4, done: 1, cancel: false }, image: 'factory-loader.bin', loader: '1.1.0', with_app: false,
+      sha: '64c1f4b01658', passed: 12, failed: 0, uptime: Math.round(t) + 600, slots, recent: [] };
+  }
   const job = (n, off) => {
     const x = ((t + off) % 22) / 16;
     if (x >= 1) return n === 3 ? { state: 'FAIL', detail: "loader didn't appear as a serial port after the restart", progress: 0.93, plugged: true }
@@ -224,7 +290,7 @@ function demoState() {
     return { state, detail: state === 'writing' || state === 'verifying' ? `${Math.round(x * 100)}%` : '', progress: x, busy: true, secs: x * 16 };
   };
   const slots = [1, 2, 3, 4, 5].map((n) => ({ n, port: `1-1.${n}`, chip: 'CDABA8F069BEDE' + (10 + n), plugged: false, busy: false, secs: null, ...job(n, n * 4) }));
-  return { image: 'factory-loader.bin', loader: '1.1.0', with_app: false, sha: '64c1f4b01658', passed: 41 + Math.floor(t / 22) * 4, failed: 2,
+  return { mode: 'auto', ready: 0, batch: null, image: 'factory-loader.bin', loader: '1.1.0', with_app: false, sha: '64c1f4b01658', passed: 41 + Math.floor(t / 22) * 4, failed: 2,
     uptime: Math.round(t) + 1830, slots,
     recent: [{ time: '2026-11-26T15:41:07', slot: 2, result: 'PASS', chip: 'CDABA8F069BEDE12', id: '3F0A91C2', secs: 15.8, detail: '' },
       { time: '2026-11-26T15:40:51', slot: 3, result: 'FAIL', chip: 'CDABA8F069BEDE13', id: '', secs: 34.2, detail: "loader didn't appear as a serial port after the restart" }] };

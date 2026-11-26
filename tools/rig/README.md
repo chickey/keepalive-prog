@@ -40,6 +40,21 @@ it within a fraction of a second, so plugging in may be all that's needed.
 If a board doesn't appear (no tile shows up), hold BOOT while
 plugging it in. For volume, a pogo-pin jig can hold BOOT down.
 
+## Modes
+
+- **Automatic:** each board is flashed as soon as it appears in WCH's
+  bootloader. Several can run at once.
+- **Batch:** boards that appear are connected to and shown as **Ready**
+  (with their chip ID and place in the queue) but not touched. Press **Flash
+  N boards** (or Enter in the terminal view) and they are flashed one at a
+  time, in port order, with the same checks and log. The rig pings each
+  waiting board once a second, because WCH's bootloader otherwise gives up
+  about 5 s after a board is plugged in. **Stop after this board** ends the
+  batch early; switching back to Automatic flashes anything still waiting.
+
+The switch is at the top of the dashboard; the last mode used is remembered
+(`rig-settings.json`). `--mode auto|batch` overrides it at start-up.
+
 ## The dashboard
 
 `start-rig.sh` (the **Keep Alive Rig** launcher on the Pi) starts the rig and
@@ -50,8 +65,8 @@ session's pass/fail counts; below, the latest results and a **Download log**
 button. It beeps on pass and fail (the **Sound** button turns that off).
 Closing the window stops the rig, so the Pi is free for other work.
 
-`http://localhost:8765/?demo` shows made-up boards, to check the screen
-without hardware.
+`http://localhost:8765/?demo` (and `?demo=batch`) shows made-up boards, to
+check the screen without hardware. The demo makes no sounds.
 
 ## Setup on the Pi
 
@@ -78,7 +93,7 @@ runs the terminal view on the HDMI console at every boot.
 ## Options
 
 ```
-karig.py [--image FILE] [--log FILE] [--once] [--web PORT] [--listen ADDR]
+karig.py [--image FILE] [--log FILE] [--once] [--mode auto|batch] [--web PORT] [--listen ADDR]
 ```
 
 - `--image` defaults to `firmware/prebuilt/factory-loader.bin` (loader only).
