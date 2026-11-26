@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keep Alive flash rig</title>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --surface-2: #1f2630; --line: #2d3540;
+  --text: #e6edf3; --muted: #8b97a6;
+  --accent: #f15600;
+  --ok: #2ea043; --ok-soft: rgba(46,160,67,.16);
+  --bad: #f85149; --bad-soft: rgba(248,81,73,.16);
+  --busy: #d29922; --busy-soft: rgba(210,153,34,.16);
+  --ready: #388bfd; --ready-soft: rgba(56,139,253,.16);
+  --radius: 14px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f4; --line: #d8dee4;
+    --text: #1b2430; --muted: #5b6778;
+    --ok-soft: rgba(46,160,67,.12); --bad-soft: rgba(248,81,73,.12); --busy-soft: rgba(210,153,34,.14);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+body { padding: 20px 24px 32px; min-height: 100vh; }
+
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(241,86,0,.2); }
+h1 { margin: 0; font-size: 1.5rem; font-weight: 650; letter-spacing: -.01em; }
+.image { color: var(--muted); font-size: .92rem; }
+.image b { color: var(--text); font-weight: 600; }
+.right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.btn { font: inherit; font-size: .9rem; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 8px 14px; cursor: pointer; text-decoration: none; }
+.btn:hover { border-color: var(--muted); }
+.btn[aria-pressed="false"] { color: var(--muted); }
+.link { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+.link i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+.link.down i { background: var(--bad); }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
+.stat .k { color: var(--muted); font-size: .85rem; }
+.stat .v { font-size: 2.4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat.ok .v { color: var(--ok); } .stat.bad .v { color: var(--bad); } .stat.busy .v { color: var(--busy); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.tile { position: relative; background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px 18px; min-height: 190px; display: flex; flex-direction: column; gap: 10px; transition: border-color .2s, background .2s; }
+.tile .top { display: flex; align-items: baseline; gap: 10px; }
+.tile .num { font-size: 2rem; font-weight: 700; line-height: 1; }
+.tile .port { color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+.tile .badge { margin-left: auto; font-size: .8rem; font-weight: 700; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted); }
+.tile .step { font-size: 1.15rem; font-weight: 600; }
+.tile .sub { color: var(--muted); font-size: .88rem; overflow-wrap: anywhere; }
+.tile .chip { font-family: var(--mono); font-size: .82rem; color: var(--muted); margin-top: auto; }
+.bar { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--busy); border-radius: inherit; transition: width .25s linear; }
+.tile.busy { border-color: var(--busy); }
+.tile.busy .badge { background: var(--busy-soft); color: var(--busy); }
+.tile.pass { border-color: var(--ok); background: linear-gradient(var(--ok-soft), var(--ok-soft)), var(--surface); }
+.tile.pass .badge { background: var(--ok); color: #fff; }
+.tile.pass .bar > i { background: var(--ok); }
+.tile.fail { border-color: var(--bad); background: linear-gradient(var(--bad-soft), var(--bad-soft)), var(--surface); }
+.tile.fail .badge { background: var(--bad); color: #fff; }
+.tile.fail .bar > i { background: var(--bad); }
+.tile .big { font-size: 1.6rem; font-weight: 700; }
+.tile.pass .big { color: var(--ok); } .tile.fail .big { color: var(--bad); }
+.unplug { align-self: flex-start; font-size: .85rem; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+  border: 1px dashed currentColor; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .unplug { animation: none; } .bar > i { transition: none; } }
+
+.empty { border: 2px dashed var(--line); border-radius: var(--radius); padding: 48px 24px; text-align: center; color: var(--muted); }
+.empty b { display: block; color: var(--text); font-size: 1.3rem; margin-bottom: 8px; }
+
+h2 { font-size: 1.05rem; margin: 28px 0 10px; display: flex; align-items: center; gap: 12px; }
+h2 .btn { margin-left: auto; font-size: .82rem; padding: 6px 12px; }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--mono); font-size: .82rem; }
+td.why { white-space: normal; color: var(--muted); }
+.r { font-weight: 700; } .r.PASS { color: var(--ok); } .r.FAIL { color: var(--bad); }
+.none { color: var(--muted); padding: 14px; }
+
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { font: inherit; font-size: .88rem; border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+.batchbar { display: none; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.batchbar.on { display: flex; }
+.batchbar .msg { font-size: 1.05rem; font-weight: 600; }
+.batchbar .msg small { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; margin-top: 2px; }
+.batchbar .go { margin-left: auto; font-size: 1.05rem; font-weight: 700; padding: 12px 26px; border-radius: 12px; border: 0;
+  background: var(--ready); color: #fff; cursor: pointer; }
+.batchbar .go:disabled { opacity: .4; cursor: default; }
+.batchbar .stop { margin-left: auto; }
+.tile.ready { border-color: var(--ready); }
+.tile.ready .badge { background: var(--ready-soft); color: var(--ready); }
+.tile.ready .bar > i { background: var(--ready); }
+.queue { font-size: 1.6rem; font-weight: 700; color: var(--ready); }
+.banner { display: none; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-weight: 600; }
+.banner.on { display: block; }
+
+@media (max-width: 700px) {
+  body { padding: 14px 16px 24px; }
+  .right { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Keep Alive flash rig</h1></div>
+  <div class="image" id="image">Connecting…</div>
+  <div class="right">
+    <div class="seg" role="group" aria-label="Mode">
+      <button type="button" data-mode="auto" aria-pressed="true" title="Flash each board as soon as it's plugged in">Automatic</button>
+      <button type="button" data-mode="batch" aria-pressed="false" title="Plug several boards in, then flash them one at a time">Batch</button>
+    </div>
+    <span class="link" id="link"><i></i><span>Running</span></span>
+    <button class="btn" id="sound" type="button" aria-pressed="true">Sound on</button>
+  </div>
+</header>
+
+<div class="banner" id="banner">The rig isn't responding. It may have been stopped; start it again from the launcher.</div>
+
+<section class="stats" aria-label="Totals this session">
+  <div class="stat ok"><div class="k">Passed</div><div class="v" id="passed">0</div></div>
+  <div class="stat bad"><div class="k">Failed</div><div class="v" id="failed">0</div></div>
+  <div class="stat busy"><div class="k">In progress or waiting</div><div class="v" id="busy">0</div></div>
+</section>
+
+<section class="batchbar" id="batchbar" aria-live="polite">
+  <div class="msg" id="batchMsg"></div>
+  <button class="go" id="btnGo" type="button">Flash</button>
+  <button class="btn stop" id="btnStop" type="button" hidden>Stop after this board</button>
+</section>
+
+<section aria-label="Hub ports">
+  <div class="tiles" id="tiles"></div>
+  <div class="empty" id="empty"><b>Plug boards into the hub</b>Hold BOOT while plugging each one in, then let go after a second. Each appears here as it's found.</div>
+</section>
+
+<h2>Recent results <a class="btn" href="/log.csv" download>Download log</a></h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Time</th><th>Port</th><th>Result</th><th>Chip ID</th><th>USB ID</th><th>Took</th><th>Details</th></tr></thead>
+    <tbody id="recent"></tbody>
+  </table>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const STEP = { connecting: 'Connecting', unlocking: 'Unlocking', erasing: 'Erasing', writing: 'Writing', verifying: 'Verifying',
+  restarting: 'Restarting', checking: 'Checking the loader', waiting: 'Waiting', ready: 'Ready' };
+
+let sound = true;
+try { sound = localStorage.getItem('rig-sound') !== 'off'; } catch {}
+function renderSound() { $('sound').setAttribute('aria-pressed', sound); $('sound').textContent = sound ? 'Sound on' : 'Sound off'; }
+$('sound').addEventListener('click', () => { sound = !sound; try { localStorage.setItem('rig-sound', sound ? 'on' : 'off'); } catch {} renderSound(); });
+renderSound();
+
+// Only when a board finishes: a bright rising chime for a pass, a low double
+// buzz for a failure, so they can be told apart without looking.
+let ctx;
+function tone(f, start, len, type, vol) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.value = f;
+  const t = ctx.currentTime + start;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + len + 0.02);
+}
+function beep(ok) {
+  if (!sound || demo) return;
+  try {
+    ctx ||= new AudioContext();
+    if (ok) { tone(784, 0, 0.18, 'sine', 0.2); tone(1047, 0.12, 0.18, 'sine', 0.2); tone(1319, 0.24, 0.35, 'sine', 0.2); }
+    else { tone(180, 0, 0.28, 'sawtooth', 0.12); tone(180, 0.36, 0.28, 'sawtooth', 0.12); }
+  } catch {}
+}
+
+const lastState = {};
+
+function tile(s) {
+  const done = s.state === 'PASS' || s.state === 'FAIL';
+  const cls = s.state === 'PASS' ? 'pass' : s.state === 'FAIL' ? 'fail' : s.state === 'ready' ? 'ready' : s.busy ? 'busy' : '';
+  const badge = s.state === 'PASS' ? 'PASS' : s.state === 'FAIL' ? 'FAIL' : s.state === 'ready' ? 'READY' : s.busy ? 'WORKING' : 'IDLE';
+  let body;
+  if (s.state === 'ready') body = `<div class="queue">#${s.queue ?? '–'} in queue</div><div class="sub">Waiting for Flash</div>`;
+  else if (s.state === 'PASS') body = `<div class="big">✓ Done</div><div class="sub">${esc(s.detail)}</div>`;
+  else if (s.state === 'FAIL') body = `<div class="big">✕ Failed</div><div class="sub">${esc(s.detail)}</div>`;
+  else body = `<div class="step">${esc(STEP[s.state] || s.state)}${s.detail ? ` <span class="sub">${esc(s.detail)}</span>` : ''}</div>
+    ${s.secs != null ? `<div class="sub">${s.secs.toFixed(0)} s</div>` : ''}`;
+  const pct = Math.round((s.progress || 0) * 100);
+  const hint = done && s.plugged ? `<span class="unplug">${s.state === 'PASS' ? 'Unplug' : 'Unplug to retry'}</span>` : '';
+  return `<article class="tile ${cls}" aria-label="Port ${s.n}: ${badge}">
+    <div class="top"><span class="num">${s.n}</span><span class="port">port ${esc(s.port)}</span><span class="badge">${badge}</span></div>
+    ${body}
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+    ${hint}
+    <div class="chip">${s.chip ? `chip ${esc(s.chip)}` : '&nbsp;'}</div>
+  </article>`;
+}
+
+let mode = 'auto';
+async function post(path) {
+  try { const r = await fetch(path, { method: 'POST' }); if (r.ok) render(await r.json()); } catch {}
+}
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { if (!demo) post(`/mode?m=${b.dataset.mode}`); }));
+$('btnGo').addEventListener('click', () => { if (!demo) post('/start'); });
+$('btnStop').addEventListener('click', () => { if (!demo) post('/cancel'); });
+
+function renderBatch(st) {
+  mode = st.mode;
+  document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === mode));
+  const b = st.batch;
+  $('batchbar').classList.toggle('on', mode === 'batch' || !!b);
+  $('btnGo').hidden = !!b;
+  $('btnStop').hidden = !b;
+  $('btnStop').disabled = !!b?.cancel;
+  $('btnStop').textContent = b?.cancel ? 'Stopping after this board…' : 'Stop after this board';
+  $('btnGo').disabled = !st.ready;
+  $('btnGo').textContent = st.ready ? `Flash ${st.ready} board${st.ready === 1 ? '' : 's'}` : 'Flash';
+  $('batchMsg').innerHTML = b
+    ? `Flashing board ${Math.min(b.done + 1, b.total)} of ${b.total}<small>One at a time, in port order. Results are logged as each finishes.</small>`
+    : st.ready
+      ? `${st.ready} board${st.ready === 1 ? '' : 's'} ready<small>Plug in more with BOOT held, or flash these now. Waiting boards are kept in the bootloader.</small>`
+      : 'Batch mode<small>Plug boards in with BOOT held; they wait here until you press Flash.</small>';
+}
+
+function render(st) {
+  renderBatch(st);
+  $('image').innerHTML = `Loader <b>${esc(st.loader)}</b>${st.with_app ? ' + firmware' : ''} · ${esc(st.image)} · ${esc(st.sha)}`;
+  $('passed').textContent = st.passed;
+  $('failed').textContent = st.failed;
+  $('busy').textContent = st.slots.filter((s) => s.busy || s.state === 'ready').length;
+  $('empty').hidden = st.slots.length > 0;
+  $('tiles').innerHTML = st.slots.map(tile).join('');
+  for (const s of st.slots) {
+    const prev = lastState[s.port];
+    if (prev && prev !== s.state && (s.state === 'PASS' || s.state === 'FAIL')) beep(s.state === 'PASS');
+    lastState[s.port] = s.state;
+  }
+  $('recent').innerHTML = st.recent.length ? st.recent.map((r) => `<tr>
+      <td>${esc(r.time.slice(11))}</td><td>${r.slot}</td><td class="r ${r.result}">${r.result}</td>
+      <td class="mono">${esc(r.chip)}</td><td class="mono">${esc(r.id)}</td><td>${r.secs != null ? r.secs + ' s' : ''}</td>
+      <td class="why">${esc(r.detail)}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="none">Nothing yet this session.</td></tr>';
+}
+
+// ?demo shows made-up boards, to check the layout without hardware.
+const demo = new URLSearchParams(location.search).has('demo');
+const t0 = Date.now();
+const demoBatch = new URLSearchParams(location.search).get('demo') === 'batch';
+function demoState() {
+  const t = (Date.now() - t0) / 1000;
+  if (demoBatch) {
+    const slots = [1, 2, 3, 4].map((n) => {
+      const base = { n, port: `1-1.${n}`, chip: 'CDABA8F069BEDE' + (10 + n), plugged: true, busy: false, secs: null, progress: 0, detail: '' };
+      if (n === 1) return { ...base, state: 'PASS', detail: 'loader 1.1.0  id 3F0A91C2', progress: 1 };
+      if (n === 2) return { ...base, state: 'writing', detail: `${Math.round((t % 10) * 10)}%`, progress: 0.08 + (t % 10) / 16, busy: true, secs: t % 10 };
+      return { ...base, state: 'ready', queue: n - 2 };
+    });
+    return { mode: 'batch', ready: 2, batch: { total: 4, done: 1, cancel: false }, image: 'factory-loader.bin', loader: '1.1.0', with_app: false,
+      sha: '64c1f4b01658', passed: 12, failed: 0, slots, recent: [] };
+  }
+  const job = (n, off) => {
+    const x = ((t + off) % 22) / 16;
+    if (x >= 1) return n === 3 ? { state: 'FAIL', detail: "loader didn't appear as a serial port after the restart", progress: 0.93, plugged: true }
+      : { state: 'PASS', detail: 'loader 1.1.0  id 3F0A91C2', progress: 1, plugged: true };
+    const steps = [['erasing', 0.08], ['writing', 0.7], ['verifying', 0.9], ['checking', 1]];
+    const [state] = steps.find(([, e]) => x < e);
+    return { state, detail: state === 'writing' || state === 'verifying' ? `${Math.round(x * 100)}%` : '', progress: x, busy: true, secs: x * 16 };
+  };
+  const slots = [1, 2, 3, 4, 5].map((n) => ({ n, port: `1-1.${n}`, chip: 'CDABA8F069BEDE' + (10 + n), plugged: false, busy: false, secs: null, ...job(n, n * 4) }));
+  return { mode: 'auto', ready: 0, batch: null, image: 'factory-loader.bin', loader: '1.1.0', with_app: false, sha: '64c1f4b01658', passed: 41 + Math.floor(t / 22) * 4, failed: 2,
+    slots,
+    recent: [{ time: '2026-11-26T15:41:07', slot: 2, result: 'PASS', chip: 'CDABA8F069BEDE12', id: '3F0A91C2', secs: 15.8, detail: '' },
+      { time: '2026-11-26T15:40:51', slot: 3, result: 'FAIL', chip: 'CDABA8F069BEDE13', id: '', secs: 34.2, detail: "loader didn't appear as a serial port after the restart" }] };
+}
+
+let failures = 0;
+async function poll() {
+  if (demo) { render(demoState()); setTimeout(poll, 400); return; }
+  try {
+    const r = await fetch('/state', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+    failures = 0;
+  } catch {
+    failures++;
+  }
+  const down = failures >= 3;
+  $('banner').classList.toggle('on', down);
+  $('link').classList.toggle('down', down);
+  $('link').lastElementChild.textContent = down ? 'Stopped' : 'Running';
+  setTimeout(poll, 400);
+}
+poll();
+</script>
+</body>
+</html>
