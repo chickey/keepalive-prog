@@ -18,7 +18,7 @@ At power-up it decides where it is plugged in:
   laptops asks the user to allow a new USB accessory before enumerating it.
 - **Power bank** (no host, or something already pulling D+/D− high): stays
   off the data lines, runs the active preset, and sleeps in standby between
-  pulses. By default the LED blinks the preset number every 10 s; the config
+  pulses. By default the LED stays off (since 1.1.0); the config
   page can switch it to a short flash with each pulse, or off.
 
 It runs the active preset from power-up while it waits for a host, so a power

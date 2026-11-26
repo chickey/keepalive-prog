@@ -16,7 +16,7 @@ export class MockTransport {
     this.flash = { presets: DEFAULTS.map((p) => ({ ...p })), active: 1 };
     this.presets = this.flash.presets.map((p) => ({ ...p }));
     this.active = this.flash.active;
-    this.led = 2;
+    this.led = 0;
     this.run = 0;
     this.runStart = 0;
     this.test = null;

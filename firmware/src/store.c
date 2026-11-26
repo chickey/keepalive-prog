@@ -75,7 +75,7 @@ void store_load(void)
 	} else {
 		app_defaults();
 		app.active = 1;
-		app.led = LED_MODE_REMIND;
+		app.led = LED_MODE_OFF;     // new boards: light off (1.1.0+)
 	}
 }
 
