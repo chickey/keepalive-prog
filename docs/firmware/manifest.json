@@ -1,16 +1,16 @@
 {
   "name": "Keep Alive",
-  "version": "1.1.0-test1",
+  "version": "1.1.0-test2",
   "file": "keepalive.kai",
-  "size": 16552,
-  "sha256": "8c6e01aeb59b4710ffb71ad26f918f8acc0f520465e2619c2f7fce205d82368f",
+  "size": 16572,
+  "sha256": "3eea2e8cce85f308a613951f37e5016b02d89cbc01d60eb76f955f05fefe523a",
   "built": "2026-11-26",
   "chip": "CH32X035F8U6",
-  "loader": "1.1.0",
+  "loader": "1.1.0-test3",
   "full": {
     "file": "keepalive-full.bin",
-    "size": 32808,
-    "sha256": "469ecf5fb977a82d8addc87a6a5e74924ba7f766fa871081797e8bcbb20a2665"
+    "size": 32828,
+    "sha256": "1ccd6d4ab42961fff92969092a235d55a2ca8ad0315151a3dc23b030b9aa3dbf"
   },
   "note": "Test build: update loader and signed firmware. Not for release."
 }

@@ -3,7 +3,7 @@
 // Sits at the start of flash and runs first at every power-up. It starts the
 // firmware straight away unless
 //   - the firmware asked for update mode (BOOT command: a word in RAM), or
-//   - the PRESET button is held at power-up, or
+//   - the INPUT button is held at power-up, or
 //   - there is no valid firmware installed.
 // In update mode it appears as the same USB serial port as the firmware, so
 // the web page can install new firmware over Web Serial with no driver on any
@@ -16,7 +16,7 @@
 #include "ed25519.h"
 #include "keys.h"
 
-#define LOADER_VERSION  "1.1.0"
+#define LOADER_VERSION  "1.1.0-test3"
 #define PIN_PRESET      PB1
 #define PIN_LED         PB12
 #define LINE_MAX        300
@@ -214,7 +214,7 @@ static unsigned rlen;
 static void r_str(const char *s) { while (*s && rlen < sizeof rbuf - 2) rbuf[rlen++] = *s++; }
 static void r_hex(uint32_t v, int digits)
 {
-	while (digits--) { uint8_t d = (v >> (4 * digits)) & 15; r_str((char[2]){ d < 10 ? '0' + d : 'a' + d - 10, 0 }); }
+	while (digits--) { uint8_t d = (v >> (4 * digits)) & 15; r_str((char[2]){ d < 10 ? '0' + d : 'A' + d - 10, 0 }); }
 }
 static void r_dec(uint32_t v)
 {
@@ -395,7 +395,40 @@ static uint16_t rx_len;
 static uint8_t rx_overflow;
 static uint32_t last_rx;
 
-void HandleUSBInput(int n, uint8_t *data)
+// Received bytes go straight into a queue from the USB interrupt. ch32fun's
+// default keeps only 64 bytes between polls and drops the oldest, which cut
+// the long BEGIN and DATA lines (several packets back to back). The page sends
+// one line and waits for the reply, so 512 bytes is plenty.
+#define RXQ_SIZE 512
+static uint8_t rxq[RXQ_SIZE];
+static volatile uint16_t rxq_head, rxq_tail;
+
+void HandleDataOut(struct _USBState *ctx, int endp, uint8_t *data, int len)
+{
+	if (endp == 0) { ctx->USBFS_SetupReqLen = 0; return; }
+	if (endp != 2) return;
+	for (int i = 0; i < len; i++) {
+		uint16_t next = (rxq_head + 1) & (RXQ_SIZE - 1);
+		if (next == rxq_tail) break;   // full: the line will fail its length check
+		rxq[rxq_head] = data[i];
+		rxq_head = next;
+	}
+}
+
+static void handle_bytes(int n, const uint8_t *data);
+
+static void rx_poll(void)
+{
+	while (rxq_tail != rxq_head) {
+		uint8_t c = rxq[rxq_tail];
+		rxq_tail = (rxq_tail + 1) & (RXQ_SIZE - 1);
+		handle_bytes(1, &c);
+	}
+}
+
+void HandleUSBInput(int n, uint8_t *data) { handle_bytes(n, data); }
+
+static void handle_bytes(int n, const uint8_t *data)
 {
 	last_rx = millis();
 	for (int i = 0; i < n; i++) {
@@ -450,12 +483,12 @@ int main(void)
 
 	for (;;) {
 		uint32_t now = millis();
-		poll_input();
+		rx_poll();
 		tx_pump();
 		if (!receiving) funDigitalWrite(PIN_LED, now % 1000 < 100);   // short blink: update mode
 		// Plugged into a power bank by mistake with the button held: carry on as normal.
 		if (app && !USBFSCTX.USBFS_DevEnumStatus && now > HOST_WAIT_MS) reset();
 		// A BEGIN that the page never finished leaves no firmware; a fresh one restarts it.
-		if (receiving && now - last_rx > 30000u) receiving = 0;
+		if (receiving && millis() - last_rx > 30000u) receiving = 0;
 	}
 }

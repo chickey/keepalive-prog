@@ -177,7 +177,7 @@ class Rig:
     def set(self, s, state, detail=""):
         s.state, s.detail, s.t = state, detail, time.time()
 
-    def find_serial(self, s, before, timeout=8.0):
+    def find_serial(self, s, before, timeout=20.0):
         """The Keep Alive port that appears after the restart: same hub port if the OS says, else the new one."""
         t0 = time.time()
         while time.time() - t0 < timeout:

@@ -9,7 +9,7 @@ import { initTheme } from './theme.js';
 // Two ways in:
 //  - Web Serial (normal): the Keep Alive's update loader, reached either by
 //    asking the running firmware to restart into it (BOOT) or by holding
-//    PRESET at power-up. No driver anywhere. Installs the signed .kai file.
+//    INPUT at power-up. No driver anywhere. Installs the signed .kai file.
 //  - WebUSB (advanced / legacy): WCH's bootloader in the chip, for boards with
 //    no loader (factory-fresh, or firmware older than 1.1.0). Installs the
 //    loader and the firmware together. Needs WinUSB (Zadig) on Windows.
@@ -564,7 +564,7 @@ function showError(e, stage) {
     return;
   }
   if (code === 'lost') {
-    showResult('error', `<strong>The Keep Alive didn't come back in update mode.</strong> Unplug it, hold PRESET while plugging it back in, then click <b>Connect</b>. Its firmware and presets are untouched.`);
+    showResult('error', `<strong>The Keep Alive didn't come back in update mode.</strong> Unplug it, hold INPUT while plugging it back in, then click <b>Connect</b>. Its firmware and presets are untouched.`);
     el.viaPreset.open = true;
     return;
   }
@@ -581,7 +581,7 @@ function showError(e, stage) {
   const safe = writing
     ? ' Nothing is broken: the Keep Alive stays in update mode until a complete, genuine firmware is installed, so you can always start again.' : '';
   const again = writing
-    ? 'Click <b>Connect</b> to try again (if it isn\'t found, unplug it and hold PRESET while plugging it back in).'
+    ? 'Click <b>Connect</b> to try again (if it isn\'t found, unplug it and hold INPUT while plugging it back in).'
     : 'Unplug the Keep Alive, plug it back in and try again.';
   showResult('error', `<strong>Something went wrong ${what}.</strong> ${esc(e?.message || e)}. ${again}${safe}`);
 }

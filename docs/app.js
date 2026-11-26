@@ -246,13 +246,13 @@ function buildCards() {
       range: node.querySelector('.ma-range'), ma: node.querySelector('.ma'),
       on: node.querySelector('.on'), off: node.querySelector('.off'), cont: node.querySelector('.cont'),
       summary: node.querySelector('.summary'), err: node.querySelector('.ferr'),
-      en: node.querySelector('.en'), enWrap: node.querySelector('.en-wrap'),
+      remove: node.querySelector('.remove'),
     };
     const n = i + 1;
     c.pn.textContent = n;
     const id = (k) => `p${n}-${k}`;
-    for (const [k, inp] of [['ma', c.ma], ['on', c.on], ['off', c.off], ['cont', c.cont], ['range', c.range], ['en', c.en]]) inp.id = id(k);
-    c.enWrap.hidden = !hasEnable;
+    for (const [k, inp] of [['ma', c.ma], ['on', c.on], ['off', c.off], ['cont', c.cont], ['range', c.range]]) inp.id = id(k);
+    c.remove.setAttribute('aria-label', `Remove preset ${n}`);
     const lbls = node.querySelectorAll('.flabel');
     lbls[0].htmlFor = id('ma'); lbls[1].htmlFor = id('on'); lbls[2].htmlFor = id('off');
     c.range.setAttribute('aria-label', `Preset ${n} pulse current`);
@@ -268,10 +268,25 @@ function buildCards() {
     c.cont.addEventListener('change', () => { c.off.disabled = c.cont.checked; edited(n); });
     if (capped()) c.cont.closest('label').hidden = true;   // 50% duty cap: no continuous load
     c.use.addEventListener('click', () => select(n));
-    c.en.addEventListener('change', () => setEnabled(n, c.en.checked));
+    c.remove.addEventListener('click', () => removePreset(n));
     cards.push(c);
     el.presets.append(node);
   }
+  // Presets that aren't enabled are hidden; this tile brings the next one back.
+  addTile = document.createElement('button');
+  addTile.type = 'button';
+  addTile.className = 'add-preset';
+  addTile.innerHTML = '<span class="plus" aria-hidden="true">+</span><span>Add preset</span>';
+  addTile.addEventListener('click', addPreset);
+  el.presets.append(addTile);
+}
+
+let addTile = null;
+const enabledCount = () => presets.filter((p) => p.en).length;
+
+function renderAddTile() {
+  if (!addTile) return;
+  addTile.hidden = !hasEnable || enabledCount() >= presets.length;
 }
 
 function readCard(n) {
@@ -290,8 +305,8 @@ function readCard(n) {
 
 function renderCard(n, p = presets[n - 1]) {
   const c = cards[n - 1];
-  c.root.classList.toggle('disabled', !p.en);
-  c.en.checked = !!p.en;
+  // Firmware without en= has all presets on, and shows them all.
+  c.root.hidden = hasEnable && !p.en;
   for (const inp of [c.ma, c.range, c.on, c.cont]) inp.disabled = !p.en;
   c.ma.value = p.ma; c.range.value = p.ma;
   c.on.value = sec(p.on);
@@ -317,11 +332,10 @@ function renderActive() {
     const on = i + 1 === active;
     c.root.classList.toggle('active', on);
     c.badge.hidden = !on;
-    c.use.hidden = on || !presets[i]?.en;
-    // The active preset can't be disabled, so at least one always stays enabled.
-    c.en.disabled = on;
-    c.enWrap.title = on ? 'This is the active preset. Use another preset before disabling this one.' : '';
+    c.use.hidden = on || !presets[i]?.en || enabledCount() < 2;
+    c.remove.hidden = !hasEnable || enabledCount() < 2;
   });
+  renderAddTile();
   const p = presets[active - 1];
   if (p && p.ma > 0) el.testMa.value = p.ma;
 }
@@ -387,6 +401,27 @@ async function setEnabled(n, on) {
   renderActive();
 }
 
+async function addPreset() {
+  const n = presets.findIndex((p) => !p.en) + 1;
+  if (!n) return;
+  await setEnabled(n, true);
+  if (presets[n - 1].en) {
+    cards[n - 1].root.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    cards[n - 1].ma.focus({ preventScroll: true });
+  }
+}
+
+// The active preset can't be disabled, so switch to another enabled one first.
+async function removePreset(n) {
+  if (enabledCount() < 2) return;
+  if (n === active) {
+    const other = presets.findIndex((p, i) => p.en && i + 1 !== n) + 1;
+    await select(other);
+    if (active === n) return;
+  }
+  await setEnabled(n, false);
+}
+
 // Device options (firmware 1.0.3+; older firmware answers OPTS with ERR 1).
 const ledRadios = () => [...el.lightOpts.querySelectorAll('input[name="led"]')];
 let ledMode = 2;
@@ -446,6 +481,7 @@ async function save() {
 async function restoreDefaults() {
   try {
     await link.cmd('DEFAULTS');
+    active = parseKV(await link.cmd('STATUS')).active;   // 1.1.0+ resets to preset 1
     for (let n = 1; n <= cards.length; n++) {
       const p = parseKV(await link.cmd(`GET ${n}`));
       presets[n - 1] = toPreset(p);

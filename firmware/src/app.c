@@ -2,16 +2,18 @@
 
 app_t app;
 
-// Factory presets: 50 / 125 / 200 mA, 0.5 s on, 4.5 s off.
+// Factory presets: 50 / 125 / 200 mA, 0.5 s on, 4.5 s off. Only preset 1 is
+// enabled to start with (1.1.0+); the config page adds the others when wanted.
 static const preset_t factory[NPRESETS] = {
 	{  50, 500, 4500, 1 },
-	{ 125, 500, 4500, 1 },
-	{ 200, 500, 4500, 1 },
+	{ 125, 500, 4500, 0 },
+	{ 200, 500, 4500, 0 },
 };
 
 void app_defaults(void)
 {
 	for (int i = 0; i < NPRESETS; i++) app.presets[i] = factory[i];
+	app.active = 1;     // the only enabled one
 }
 
 uint8_t app_next_enabled(uint8_t n)

@@ -62,8 +62,10 @@ int main(void)
 
 	// Presets
 	EXPECT_REPLY("GET 1", "OK p=1 ma=50 on=500 off=4500 en=1");
-	EXPECT_REPLY("GET 3", "OK p=3 ma=200 on=500 off=4500 en=1");
-	EXPECT_REPLY("GET", "OK p=1 ma=50 on=500 off=4500 en=1 | p=2 ma=125 on=500 off=4500 en=1 | p=3 ma=200 on=500 off=4500 en=1");
+	EXPECT_REPLY("GET 3", "OK p=3 ma=200 on=500 off=4500 en=0");   // only preset 1 starts enabled
+	EXPECT_REPLY("GET", "OK p=1 ma=50 on=500 off=4500 en=1 | p=2 ma=125 on=500 off=4500 en=0 | p=3 ma=200 on=500 off=4500 en=0");
+	EXPECT_REPLY("SET 2 en=1", "OK p=2 ma=125 on=500 off=4500 en=1");
+	EXPECT_REPLY("SET 3 en=1", "OK p=3 ma=200 on=500 off=4500 en=1");
 	EXPECT_PREFIX("GET 4", "ERR 3");
 	EXPECT_PREFIX("GET x", "ERR 2");
 	EXPECT_REPLY("SET 2 ma=140", "OK p=2 ma=140 on=500 off=4500 en=1");
@@ -83,8 +85,13 @@ int main(void)
 	EXPECT_PREFIX("SET 2 ma=1234567890", "ERR 2");
 	EXPECT_PREFIX("SET", "ERR 2");
 	EXPECT_REPLY("GET 2", "OK p=2 ma=140 on=250 off=250 en=1"); // failed SETs changed nothing
+	EXPECT_REPLY("SELECT 2", "OK active=2");
 	EXPECT_REPLY("DEFAULTS", "OK defaults");
-	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
+	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=0");
+	EXPECT(app.active == 1, "DEFAULTS makes preset 1 active: %d", app.active);
+	EXPECT_PREFIX("SELECT 3", "ERR 5");
+	EXPECT_REPLY("SET 2 en=1", "OK p=2 ma=125 on=500 off=4500 en=1");
+	EXPECT_REPLY("SET 3 en=1", "OK p=3 ma=200 on=500 off=4500 en=1");
 	EXPECT_REPLY("SELECT 3", "OK active=3");
 	EXPECT_PREFIX("SELECT 0", "ERR 3");
 
@@ -110,8 +117,9 @@ int main(void)
 	EXPECT_PREFIX("OPTS remind=1", "ERR 2");
 	EXPECT_REPLY("OPTS led=2", "OK led=2");
 	EXPECT_REPLY("DIAG", "OK awu_us=16000");
-	EXPECT_REPLY("DEFAULTS", "OK defaults");          // re-enables everything
-	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=1");
+	EXPECT_REPLY("DEFAULTS", "OK defaults");          // back to just preset 1
+	EXPECT_REPLY("GET 2", "OK p=2 ma=125 on=500 off=4500 en=0");
+	EXPECT(app.active == 1, "active after DEFAULTS: %d", app.active);
 	EXPECT_REPLY("SAVE", "OK saved");
 	EXPECT(saved == 1, "save called");
 
@@ -120,7 +128,7 @@ int main(void)
 	EXPECT_PREFIX("STREAM 50", "ERR 3");
 	EXPECT_PREFIX("RUN 2", "ERR 2");
 	EXPECT_PREFIX("FOO", "ERR 1");
-	EXPECT_PREFIX("STATUS", "OK active=3 run=0 state=IDLE vbus=5010");
+	EXPECT_PREFIX("STATUS", "OK active=1 run=0 state=IDLE vbus=5010");
 	EXPECT_PREFIX("TEST ma=0 ms=100", "ERR 3");
 	EXPECT_PREFIX("TEST ma=100", "ERR 2");
 
