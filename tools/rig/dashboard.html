@@ -43,7 +43,7 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 650; letter-spacing: -.01em; }
 .link i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
 .link.down i { background: var(--bad); }
 
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
 .stat .k { color: var(--muted); font-size: .85rem; }
 .stat .v { font-size: 2.4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -113,7 +113,6 @@ td.why { white-space: normal; color: var(--muted); }
 
 @media (max-width: 700px) {
   body { padding: 14px 16px 24px; }
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .right { margin-left: 0; }
 }
 </style>
@@ -138,7 +137,6 @@ td.why { white-space: normal; color: var(--muted); }
   <div class="stat ok"><div class="k">Passed</div><div class="v" id="passed">0</div></div>
   <div class="stat bad"><div class="k">Failed</div><div class="v" id="failed">0</div></div>
   <div class="stat busy"><div class="k">In progress or waiting</div><div class="v" id="busy">0</div></div>
-  <div class="stat"><div class="k">Session</div><div class="v" id="uptime">0:00</div></div>
 </section>
 
 <section class="batchbar" id="batchbar" aria-live="polite">
@@ -194,7 +192,6 @@ function beep(ok) {
   } catch {}
 }
 
-const fmtUp = (s) => { const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
 const lastState = {};
 
 function tile(s) {
@@ -250,7 +247,6 @@ function render(st) {
   $('passed').textContent = st.passed;
   $('failed').textContent = st.failed;
   $('busy').textContent = st.slots.filter((s) => s.busy || s.state === 'ready').length;
-  $('uptime').textContent = fmtUp(st.uptime);
   $('empty').hidden = st.slots.length > 0;
   $('tiles').innerHTML = st.slots.map(tile).join('');
   for (const s of st.slots) {
@@ -279,7 +275,7 @@ function demoState() {
       return { ...base, state: 'ready', queue: n - 2 };
     });
     return { mode: 'batch', ready: 2, batch: { total: 4, done: 1, cancel: false }, image: 'factory-loader.bin', loader: '1.1.0', with_app: false,
-      sha: '64c1f4b01658', passed: 12, failed: 0, uptime: Math.round(t) + 600, slots, recent: [] };
+      sha: '64c1f4b01658', passed: 12, failed: 0, slots, recent: [] };
   }
   const job = (n, off) => {
     const x = ((t + off) % 22) / 16;
@@ -291,7 +287,7 @@ function demoState() {
   };
   const slots = [1, 2, 3, 4, 5].map((n) => ({ n, port: `1-1.${n}`, chip: 'CDABA8F069BEDE' + (10 + n), plugged: false, busy: false, secs: null, ...job(n, n * 4) }));
   return { mode: 'auto', ready: 0, batch: null, image: 'factory-loader.bin', loader: '1.1.0', with_app: false, sha: '64c1f4b01658', passed: 41 + Math.floor(t / 22) * 4, failed: 2,
-    uptime: Math.round(t) + 1830, slots,
+    slots,
     recent: [{ time: '2026-11-26T15:41:07', slot: 2, result: 'PASS', chip: 'CDABA8F069BEDE12', id: '3F0A91C2', secs: 15.8, detail: '' },
       { time: '2026-11-26T15:40:51', slot: 3, result: 'FAIL', chip: 'CDABA8F069BEDE13', id: '', secs: 34.2, detail: "loader didn't appear as a serial port after the restart" }] };
 }

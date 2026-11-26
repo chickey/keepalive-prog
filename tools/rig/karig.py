@@ -470,8 +470,7 @@ class Rig:
                     "batch": {"total": b["total"], "done": b["done"], "cancel": b["cancel"]} if b else None,
                     "image": os.path.basename(self.a.image), "loader": self.loader_ver, "with_app": self.with_app,
                     "sha": self.sha[:12], "passed": self.passed, "failed": self.failed,
-                    "log": os.path.abspath(self.a.log), "slots": slots, "recent": list(self.recent),
-                    "uptime": round(time.time() - self.started)}
+                    "log": os.path.abspath(self.a.log), "slots": slots, "recent": list(self.recent)}
 
     def serve(self, port, host):
         rig = self
