@@ -10,10 +10,11 @@ one row per hub port, and into a CSV log.
   python3 karig.py                                  # loader only (what ships)
   python3 karig.py --image ../../firmware/prebuilt/factory-full.bin
   python3 karig.py --once                           # program what's plugged in, then exit
+  python3 karig.py --web 8765                       # dashboard at http://localhost:8765
 
 Needs pyusb and pyserial (pip install -r requirements.txt) and libusb.
 """
-import argparse, csv, datetime, hashlib, os, re, secrets, sys, threading, time
+import argparse, collections, csv, datetime, hashlib, http.server, json, os, re, secrets, sys, threading, time
 
 import usb.core, usb.util
 import serial, serial.tools.list_ports
@@ -134,6 +135,8 @@ class Slot:
     def __init__(self, path, number):
         self.path, self.number = path, number
         self.state, self.detail, self.uid, self.t = "waiting", "", "", time.time()
+        self.progress = 0.0      # 0..1 through the whole job, for the dashboard
+        self.started = None
         self.busy = self.plugged = False
 
 
@@ -152,6 +155,8 @@ class Rig:
         self.passed = self.failed = 0
         self.prev = set()
         self.claimed = set()     # serial ports a worker has already taken
+        self.recent = collections.deque(maxlen=50)
+        self.started = time.time()
         new = not os.path.exists(a.log)
         self.log = open(a.log, "a", newline="")
         self.csv = csv.writer(self.log)
@@ -170,12 +175,32 @@ class Rig:
         with self.lock:
             if result == "PASS": self.passed += 1
             else: self.failed += 1
-            self.csv.writerow([datetime.datetime.now().isoformat(timespec="seconds"), s.number, s.path, result, detail,
+            now = datetime.datetime.now().isoformat(timespec="seconds")
+            self.csv.writerow([now, s.number, s.path, result, detail,
                                isp_uid, btver, hello, os.path.basename(self.a.image), self.sha])
             self.log.flush()
+            uid = re.search(r"\buid=(\S+)", hello)
+            self.recent.appendleft({"time": now, "slot": s.number, "result": result, "detail": detail,
+                                    "chip": isp_uid, "id": uid.group(1) if uid else "",
+                                    "secs": round(time.time() - s.started, 1) if s.started else None})
+
+    # Where each step starts in the overall progress bar.
+    STEPS = {"connecting": 0.0, "unlocking": 0.02, "erasing": 0.03, "writing": 0.08, "verifying": 0.7,
+             "restarting": 0.9, "checking": 0.97, "PASS": 1.0, "FAIL": None}
 
     def set(self, s, state, detail=""):
         s.state, s.detail, s.t = state, detail, time.time()
+        if state == "connecting":
+            s.started = time.time()
+        p = self.STEPS.get(state)
+        if p is not None:
+            s.progress = p
+
+    def step_progress(self, s, lo, hi):
+        def cb(f):
+            s.detail = f"{f:.0%}"
+            s.progress = lo + (hi - lo) * f
+        return cb
 
     def find_serial(self, s, before, timeout=20.0):
         """The Keep Alive port that appears after the restart: same hub port if the OS says, else the new one."""
@@ -222,9 +247,9 @@ class Rig:
             self.set(s, "erasing")
             isp.erase_all()
             self.set(s, "writing", "0%")
-            isp.program(self.padded, lambda f: setattr(s, "detail", f"{f:.0%}"))
+            isp.program(self.padded, self.step_progress(s, 0.08, 0.7))
             self.set(s, "verifying", "0%")
-            isp.verify(self.padded, lambda f: setattr(s, "detail", f"{f:.0%}"))
+            isp.verify(self.padded, self.step_progress(s, 0.7, 0.9))
             before = {p.device for p in serial.tools.list_ports.comports()}
             self.set(s, "restarting")
             isp.end()
@@ -298,15 +323,65 @@ class Rig:
         sys.stdout.write("\n".join(out) + "\n")
         sys.stdout.flush()
 
+    def snapshot(self):
+        with self.lock:
+            slots = [{"n": s.number, "port": s.path, "state": s.state, "detail": s.detail, "chip": s.uid,
+                      "progress": s.progress, "plugged": s.plugged, "busy": s.busy,
+                      "secs": round(time.time() - s.started, 1) if s.started and s.busy else None}
+                     for s in sorted(self.slots.values(), key=lambda s: s.number)]
+            return {"image": os.path.basename(self.a.image), "loader": self.loader_ver, "with_app": self.with_app,
+                    "sha": self.sha[:12], "passed": self.passed, "failed": self.failed,
+                    "log": os.path.abspath(self.a.log), "slots": slots, "recent": list(self.recent),
+                    "uptime": round(time.time() - self.started)}
+
+    def serve(self, port, host):
+        rig = self
+        page = os.path.join(HERE, "dashboard.html")
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def send(self, code, ctype, body, extra=()):
+                self.send_response(code)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Cache-Control", "no-store")
+                for k, v in extra:
+                    self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_GET(self):
+                path = self.path.split("?")[0]
+                if path in ("/", "/index.html"):
+                    self.send(200, "text/html; charset=utf-8", open(page, "rb").read())
+                elif path == "/state":
+                    self.send(200, "application/json", json.dumps(rig.snapshot()).encode())
+                elif path == "/log.csv":
+                    with rig.lock:
+                        rig.log.flush()
+                        data = open(rig.a.log, "rb").read()
+                    self.send(200, "text/csv", data, [("Content-Disposition", 'attachment; filename="rig-log.csv"')])
+                else:
+                    self.send(404, "text/plain", b"not found")
+
+        srv = http.server.ThreadingHTTPServer((host, port), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        print(f"Keep Alive rig dashboard: http://{'localhost' if host in ('127.0.0.1', '') else host}:{port}/   (Ctrl+C to stop)")
+        sys.stdout.flush()
+
     def run(self):
         last = 0
+        if self.a.web:
+            self.serve(self.a.web, self.a.listen)
         while True:
             present = self.scan()
-            if time.time() - last > 0.25:
+            if not self.a.web and time.time() - last > 0.25:
                 self.draw()
                 last = time.time()
             if self.a.once and self.slots and not any(s.busy for s in self.slots.values()):
-                self.draw()
+                if not self.a.web:
+                    self.draw()
                 return 0 if not self.failed else 1
             time.sleep(0.1)
 
@@ -316,6 +391,9 @@ def main():
     p.add_argument("--image", default=DEFAULT_IMAGE, help="factory image (default: loader only)")
     p.add_argument("--log", default=os.path.join(HERE, "rig-log.csv"), help="CSV log, appended to")
     p.add_argument("--once", action="store_true", help="exit when every connected board is done")
+    p.add_argument("--web", type=int, metavar="PORT", help="show a dashboard on this port instead of the terminal view")
+    p.add_argument("--listen", default="127.0.0.1",
+                   help="address for the dashboard (default: this computer only; 0.0.0.0 lets others on the network watch)")
     a = p.parse_args()
     try:
         sys.exit(Rig(a).run())
