@@ -19,7 +19,8 @@ At power-up it decides where it is plugged in:
 - **Power bank** (no host, or something already pulling D+/D− high): stays
   off the data lines, runs the active preset, and sleeps in standby between
   pulses. By default the LED stays off (since 1.1.0); the config
-  page can switch it to a short flash with each pulse, or off.
+  page can switch it to a short flash with each pulse, or to blinking the
+  preset number every 10 s.
 
 It runs the active preset from power-up while it waits for a host, so a power
 bank is kept awake during the 60 s; deep sleep only starts once it has given
